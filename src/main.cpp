@@ -4,9 +4,13 @@
 #define DT 3
 #define SW 4
 
+
+unsigned long lastBlinkTime = 0;
+bool ledState = LOW;
 int counter = 0;
 int lastStateCLK;
 boolean buttoncheck = false;
+
 
 void setup() {
     //Serial0 for reading content in VSC Terminal
@@ -26,11 +30,17 @@ void setup() {
 }
 
 void loop() {
-  // Serial0.println("ESP32 is alive!");
-  // digitalWrite(LED_BUILTIN, HIGH);
-  // delay(500);
-  // digitalWrite(LED_BUILTIN, LOW);
-  // delay(500);
+
+if (millis() - lastBlinkTime >= 500) {
+    lastBlinkTime = millis();
+    ledState = !ledState;
+    digitalWrite(LED_BUILTIN, ledState);
+    
+    // Only print "alive" when the LED toggles, so the terminal stays clean
+    if (ledState == HIGH) {
+        Serial0.println("ESP32 is alive!");
+    }
+  }
 
     //Rotary Encoder Block - Start
 
