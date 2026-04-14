@@ -24,7 +24,8 @@
     [ "encoder:GND", "nano:GND.1", "black", [ "v0" ] ],
     [ "encoder:VCC", "nano:3V3", "red", [ "v0" ] ],
     [ "encoder:CLK", "nano:D2", "green", [ "v0" ] ],
-    [ "encoder:DT", "nano:D3", "yellow", [ "v0" ] ]
+    [ "encoder:DT", "nano:D3", "yellow", [ "v0" ] ],
+    [ "encoder:SW", "nano:D4", "blue", [ "v0" ] ]
   ],
   "serialMonitor": {
   "collapse": true,
