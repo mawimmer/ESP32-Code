@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "author": "Anonymous Maker",
+  "editor": "wokwi",
+  "parts": [
+    { 
+      "type": "board-arduino-nano-esp32", 
+      "id": "nano", 
+      "top": 0, 
+      "left": 0, 
+      "attrs": { "psramSize": "8" } 
+    },
+    { 
+      "type": "wokwi-ky-040", 
+      "id": "encoder", 
+      "top": 80, 
+      "left": -150, 
+      "attrs": {} 
+    }
+  ],
+  "connections": [
+    [ "nano:TX1", "$serialMonitor:RX", "", [] ],
+    [ "nano:RX0", "$serialMonitor:TX", "", [] ],
+    [ "encoder:GND", "nano:GND.1", "black", [ "v0" ] ],
+    [ "encoder:VCC", "nano:3V3", "red", [ "v0" ] ],
+    [ "encoder:CLK", "nano:D2", "green", [ "v0" ] ],
+    [ "encoder:DT", "nano:D3", "yellow", [ "v0" ] ]
+  ],
+  "serialMonitor": {
+  "collapse": true,
+  "convertEol": false,
+  "display": "auto",
+  "newline": "lf"
+}
+}
