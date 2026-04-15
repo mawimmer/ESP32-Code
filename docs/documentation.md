@@ -25,9 +25,9 @@ This project was first simulated on VSC with the [**wokwi**](https://docs.wokwi.
 <table>
 <tr><td>
 
-|`esp-idf`|
+|`esp-idf``v4.4.7`|
 |--|
-|[API-References](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-reference/index.html)|
+|[API-References](https://docs.espressif.com/projects/esp-idf/en/v4.4.7/esp32/get-started/index.html)|
 
 </td><td>
 
