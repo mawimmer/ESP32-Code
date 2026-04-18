@@ -13,7 +13,7 @@
     { 
       "type": "wokwi-ky-040", 
       "id": "encoder0", 
-      "top": 0, 
+      "top": -80, 
       "left": -150, 
       "attrs": {} 
     },

@@ -25,6 +25,11 @@ enum Rotary_Encoder_MODI {
     EFFECT_MODI
 };
 
+enum STATE_HIGH_LOW {
+    STATE_HIGH,
+    STATE_LOW
+};
+
 //Struct holding the information of each unit defined
 struct RotaryEncoder{
     //Hardware Info
@@ -41,7 +46,9 @@ struct RotaryEncoder{
     unsigned long TimeOfLastClick = 0;
     unsigned long TimeOfLastRotation = 0;
     bool rotationPending = false;
+
     enum Rotary_Encoder_MODI MODI = BRIGHTNESS_MODI;
+    enum STATE_HIGH_LOW lastButtonState = STATE_HIGH;
 
     RotaryEncoder(pcnt_unit_t u, int clk, int dt, int sw):
     unit(u), pin_clk(clk), pin_dt(dt), pin_sw(sw) {};
@@ -116,27 +123,35 @@ void loop() {
 
     for (int i = 0 ; i < NUM_ENCODERS; i++) {
 
-        int lastButtonState = HIGH;
-
-
-        //needs debouncing!!
         
-        if(digitalRead(Encoders[i].pin_sw) == LOW)
+        if(digitalRead(Encoders[i].pin_sw) == LOW && Encoders[i].lastButtonState == STATE_HIGH){
+            
+            if(millis() - Encoders[i].TimeOfLastClick >= 500){
 
-        switch(Encoders[i].MODI) {
+                Encoders[i].lastButtonState = STATE_LOW;
 
-            case BRIGHTNESS_MODI:
-                Encoders[i].MODI = EFFECT_MODI;
-                printf("Encoder %d switched to Modi: %d \n", i, Encoders[i].MODI);
-                break;
-            case EFFECT_MODI:
-                Encoders[i].MODI = BRIGHTNESS_MODI;
-                printf("Encoder %d switched to Modi: %d \n", i, Encoders[i].MODI);
-                break;
-        }
+                Encoders[i].TimeOfLastClick = millis();
 
+                switch(Encoders[i].MODI) {
 
+                    case BRIGHTNESS_MODI:
+                        Encoders[i].MODI = EFFECT_MODI;
+                        Serial.printf("Encoder %d switched to Modi: %d \n", i, Encoders[i].MODI);
+                        break;
+                    case EFFECT_MODI:
+                        Encoders[i].MODI = BRIGHTNESS_MODI;
+                        Serial.printf("Encoder %d switched to Modi: %d \n", i, Encoders[i].MODI);
+                        break;
+                };
+
+            };
         
+        };
+
+        if(digitalRead(Encoders[i].pin_sw) == HIGH && Encoders[i].lastButtonState == STATE_LOW){
+            Encoders[i].lastButtonState = STATE_HIGH;
+        };
+       
 
         int16_t ValueNOW;
 
