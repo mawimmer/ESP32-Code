@@ -7,9 +7,8 @@
 #define PCNT_LIMIT_HIGH 21
 #define PCNT_LIMIT_LOW -21
 
-// const int CLK = 5;
-// const int DT = 6;
-// const int SW = 7;
+#define ROTARY_ENCODER_DETENTS 30
+
 
 const int NUM_ENCODERS = 4;
 
@@ -35,12 +34,17 @@ struct RotaryEncoder{
     int pin_sw;
 
     //Memory
-    int16_t lastValue;
-    //State Machine
-    // unsigned long TimeOfLastClick;
+    int16_t lastValue = 0;
 
-    // unsigned long TimeOfLastRotation;
-    // bool confirmed = false;
+    //State Machine
+
+    unsigned long TimeOfLastClick = 0;
+    unsigned long TimeOfLastRotation = 0;
+    bool rotationPending = false;
+    enum Rotary_Encoder_MODI MODI = BRIGHTNESS_MODI;
+
+    RotaryEncoder(pcnt_unit_t u, int clk, int dt, int sw):
+    unit(u), pin_clk(clk), pin_dt(dt), pin_sw(sw) {};
 };
 
 
@@ -81,10 +85,10 @@ void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt){
 };
 
 RotaryEncoder Encoders[NUM_ENCODERS]{
-    {PCNT_UNIT_0, 5, 6, 7, 0},
-    {PCNT_UNIT_1, 8, 9, 10, 0},
-    {PCNT_UNIT_2, 17, 18, 21, 0},
-    {PCNT_UNIT_3, 1, 2, 3, 0}
+    {PCNT_UNIT_0, 5, 6, 7},
+    {PCNT_UNIT_1, 8, 9, 10},
+    {PCNT_UNIT_2, 17, 18, 21},
+    {PCNT_UNIT_3, 1, 2, 3}
 
 };
 
@@ -93,9 +97,7 @@ void setup() {
     Serial.begin(115200);
     Serial.println(String("ESP-IDF Version is: ") + esp_get_idf_version());
     pinMode(LED_BUILTIN, OUTPUT);
-    // pinMode(CLK, INPUT_PULLUP);
-    // pinMode(DT, INPUT_PULLUP);
-    // pinMode(SW, INPUT_PULLUP);
+
     for (int i = 0 ; i < NUM_ENCODERS ; i++) {
         pinMode(Encoders[i].pin_clk, INPUT_PULLUP);
         pinMode(Encoders[i].pin_dt, INPUT_PULLUP);
@@ -103,26 +105,62 @@ void setup() {
 
         setup_PCNT_UNIT(Encoders[i].unit, Encoders[i].pin_clk, Encoders[i].pin_dt );
 
-        Serial.printf("Encoder # %d has been initialized!", i );
+        Serial.printf("Encoder # %d has been initialized! \n", i );
     };
 };
 
 void loop() {
 
+
+    //checking each Encoder -
+
     for (int i = 0 ; i < NUM_ENCODERS; i++) {
+
+        int lastButtonState = HIGH;
+
+
+        //needs debouncing!!
+        
+        if(digitalRead(Encoders[i].pin_sw) == LOW)
+
+        switch(Encoders[i].MODI) {
+
+            case BRIGHTNESS_MODI:
+                Encoders[i].MODI = EFFECT_MODI;
+                printf("Encoder %d switched to Modi: %d \n", i, Encoders[i].MODI);
+                break;
+            case EFFECT_MODI:
+                Encoders[i].MODI = BRIGHTNESS_MODI;
+                printf("Encoder %d switched to Modi: %d \n", i, Encoders[i].MODI);
+                break;
+        }
+
+
+        
 
         int16_t ValueNOW;
 
+        // - if a value has changed
         pcnt_get_counter_value(Encoders[i].unit, &ValueNOW);
-
-        if(Encoders[i].lastValue != ValueNOW) {
-            Serial.printf("Encoder %d has a new Value: %d", i, ValueNOW);
+        if (Encoders[i].lastValue != ValueNOW) {
+            Encoders[i].rotationPending = true;
+            Encoders[i].TimeOfLastRotation = millis();
+            Serial.printf("Encoder %d has a NEW Value: %d \n", i, ValueNOW);
             Encoders[i].lastValue = ValueNOW;
         };
+
+        // - if a rotation value has changed and is pending to be forwared
+        if (Encoders[i].rotationPending && millis() - Encoders[i].TimeOfLastRotation >= 300) {
+            Encoders[i].rotationPending = false;
+            Serial.printf("Encoder %d has a CONFIRMED Value: %d \n", i, ValueNOW );
+        }
 
     };
 
 
+
+
+    //Code running check
 
     static bool initialized = false;
 
@@ -138,8 +176,6 @@ void loop() {
         };
     
     };
-
-
 
 };
 
