@@ -34,9 +34,9 @@ enum STATE_HIGH_LOW {
 struct RotaryEncoder{
     //Hardware Info
     pcnt_unit_t unit;
-    int pin_clk;
-    int pin_dt;
-    int pin_sw;
+    gpio_num_t pin_clk;
+    gpio_num_t pin_dt;
+    gpio_num_t pin_sw;
 
     //Memory
     int16_t lastValue = 0;
@@ -46,12 +46,13 @@ struct RotaryEncoder{
     unsigned long TimeOfLastClick = 0;
     unsigned long TimeOfLastRotation = 0;
     bool rotationPending = false;
+    volatile bool buttonPressedFlag = false;
 
     enum Rotary_Encoder_MODI MODI = BRIGHTNESS_MODI;
     enum STATE_HIGH_LOW lastButtonState = STATE_HIGH;
 
     RotaryEncoder(pcnt_unit_t u, int clk, int dt, int sw):
-    unit(u), pin_clk(clk), pin_dt(dt), pin_sw(sw) {};
+    unit(u), pin_clk(static_cast<gpio_num_t>(clk)), pin_dt(static_cast<gpio_num_t>(dt)), pin_sw(static_cast<gpio_num_t>(sw)) {};
 };
 
 
@@ -92,28 +93,40 @@ void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt){
 };
 
 RotaryEncoder Encoders[NUM_ENCODERS]{
-    {PCNT_UNIT_0, D2, D3, D4},
-    {PCNT_UNIT_1, D5, D6, D7},
-    {PCNT_UNIT_2, D8, D9, D10},
-    {PCNT_UNIT_3, A0, A1, A2}
+    {PCNT_UNIT_0, 5, 6, 7},
+    {PCNT_UNIT_1, 8, 9, 10},
+    {PCNT_UNIT_2, 17, 18, 21},
+    {PCNT_UNIT_3, 1, 2, 3}
 
 };
 
 
+void IRAM_ATTR buttonISR(void* arg) {
+    RotaryEncoder* encoder = static_cast<RotaryEncoder*>(arg);
+    encoder->buttonPressedFlag = true; 
+
+};
+
 void setup() {
     Serial.begin(115200);
-    Serial.println(String("ESP-IDF Version is: ") + esp_get_idf_version());
+    Serial.printf("ESP-IDF Version is: %s\r\n", esp_get_idf_version());
     pinMode(LED_BUILTIN, OUTPUT);
 
     for (int i = 0 ; i < NUM_ENCODERS ; i++) {
-        pinMode(Encoders[i].pin_clk, INPUT_PULLUP);
-        pinMode(Encoders[i].pin_dt, INPUT_PULLUP);
-        pinMode(Encoders[i].pin_sw, INPUT_PULLUP);
+
+        gpio_set_direction(Encoders[i].pin_clk, GPIO_MODE_INPUT);
+        gpio_set_pull_mode(Encoders[i].pin_clk, GPIO_PULLUP_ONLY);
+        gpio_set_direction(Encoders[i].pin_dt, GPIO_MODE_INPUT);
+        gpio_set_pull_mode(Encoders[i].pin_dt, GPIO_PULLUP_ONLY);
+        gpio_set_direction(Encoders[i].pin_sw, GPIO_MODE_INPUT);
+        gpio_set_pull_mode(Encoders[i].pin_sw, GPIO_PULLUP_ONLY);
 
         setup_PCNT_UNIT(Encoders[i].unit, Encoders[i].pin_clk, Encoders[i].pin_dt );
 
         Serial.printf("Encoder # %d has been initialized! \r\n", i );
     };
+
+
 };
 
 void loop() {
@@ -123,32 +136,37 @@ void loop() {
 
     for (int i = 0 ; i < NUM_ENCODERS; i++) {
 
+        //if (Encoders[i].buttonPressedFlag) {
         
-        if(digitalRead(Encoders[i].pin_sw) == LOW && Encoders[i].lastButtonState == STATE_HIGH){
+            //Encoders[i].buttonPressedFlag = false;
+
             
-            if(millis() - Encoders[i].TimeOfLastClick >= 500){
+            if(gpio_get_level(Encoders[i].pin_sw) == LOW && Encoders[i].lastButtonState == STATE_HIGH){
+                
+                if(millis() - Encoders[i].TimeOfLastClick >= 500){
 
-                Encoders[i].lastButtonState = STATE_LOW;
+                    Encoders[i].lastButtonState = STATE_LOW;
 
-                Encoders[i].TimeOfLastClick = millis();
+                    Encoders[i].TimeOfLastClick = millis();
 
-                switch(Encoders[i].MODI) {
+                    switch(Encoders[i].MODI) {
 
-                    case BRIGHTNESS_MODI:
-                        Encoders[i].MODI = EFFECT_MODI;
-                        Serial.printf("Encoder %d switched to Modi: %d \r\n", i, Encoders[i].MODI);
-                        break;
-                    case EFFECT_MODI:
-                        Encoders[i].MODI = BRIGHTNESS_MODI;
-                        Serial.printf("Encoder %d switched to Modi: %d \r\n", i, Encoders[i].MODI);
-                        break;
+                        case BRIGHTNESS_MODI:
+                            Encoders[i].MODI = EFFECT_MODI;
+                            Serial.printf("Encoder %d switched to Modi: %d \r\n", i, Encoders[i].MODI);
+                            break;
+                        case EFFECT_MODI:
+                            Encoders[i].MODI = BRIGHTNESS_MODI;
+                            Serial.printf("Encoder %d switched to Modi: %d \r\n", i, Encoders[i].MODI);
+                            break;
+                    };
+
                 };
-
+            
             };
-        
-        };
+        //};
 
-        if(digitalRead(Encoders[i].pin_sw) == HIGH && Encoders[i].lastButtonState == STATE_LOW){
+        if(gpio_get_level(Encoders[i].pin_sw) == HIGH && Encoders[i].lastButtonState == STATE_LOW){
             Encoders[i].lastButtonState = STATE_HIGH;
         };
        
@@ -167,7 +185,7 @@ void loop() {
         // - if a rotation value has changed and is pending to be forwared
         if (Encoders[i].rotationPending && millis() - Encoders[i].TimeOfLastRotation >= 300) {
             Encoders[i].rotationPending = false;
-            Serial.printf("Encoder %d has a CONFIRMED Value: %d \r\n", i, ValueNOW );
+            Serial.printf("Encoder %d has a CONFIRMED Value: %d \r\n", i, Encoders[i].lastValue );
         }
 
     };
@@ -191,6 +209,9 @@ void loop() {
         };
     
     };
+
+    //not sure if this is needed, will pause
+    vTaskDelay(pdMS_TO_TICKS(10));
 
 };
 
