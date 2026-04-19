@@ -112,6 +112,8 @@ void setup() {
     Serial.printf("ESP-IDF Version is: %s\r\n", esp_get_idf_version());
     pinMode(LED_BUILTIN, OUTPUT);
 
+    gpio_install_isr_service(0);
+
     for (int i = 0 ; i < NUM_ENCODERS ; i++) {
 
         gpio_set_direction(Encoders[i].pin_clk, GPIO_MODE_INPUT);
@@ -120,6 +122,9 @@ void setup() {
         gpio_set_pull_mode(Encoders[i].pin_dt, GPIO_PULLUP_ONLY);
         gpio_set_direction(Encoders[i].pin_sw, GPIO_MODE_INPUT);
         gpio_set_pull_mode(Encoders[i].pin_sw, GPIO_PULLUP_ONLY);
+
+        gpio_set_intr_type(Encoders[i].pin_sw, GPIO_INTR_NEGEDGE);
+        gpio_isr_handler_add(Encoders[i].pin_sw, buttonISR, &Encoders[i]);
 
         setup_PCNT_UNIT(Encoders[i].unit, Encoders[i].pin_clk, Encoders[i].pin_dt );
 
@@ -136,9 +141,9 @@ void loop() {
 
     for (int i = 0 ; i < NUM_ENCODERS; i++) {
 
-        //if (Encoders[i].buttonPressedFlag) {
+        if (Encoders[i].buttonPressedFlag) {
         
-            //Encoders[i].buttonPressedFlag = false;
+            Encoders[i].buttonPressedFlag = false;
 
             
             if(gpio_get_level(Encoders[i].pin_sw) == LOW && Encoders[i].lastButtonState == STATE_HIGH){
@@ -164,7 +169,7 @@ void loop() {
                 };
             
             };
-        //};
+        };
 
         if(gpio_get_level(Encoders[i].pin_sw) == HIGH && Encoders[i].lastButtonState == STATE_LOW){
             Encoders[i].lastButtonState = STATE_HIGH;
