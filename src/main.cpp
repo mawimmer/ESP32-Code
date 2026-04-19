@@ -92,10 +92,10 @@ void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt){
 };
 
 RotaryEncoder Encoders[NUM_ENCODERS]{
-    {PCNT_UNIT_0, 5, 6, 7},
-    {PCNT_UNIT_1, 8, 9, 10},
-    {PCNT_UNIT_2, 17, 18, 21},
-    {PCNT_UNIT_3, 1, 2, 3}
+    {PCNT_UNIT_0, D2, D3, D4},
+    {PCNT_UNIT_1, D5, D6, D7},
+    {PCNT_UNIT_2, D8, D9, D10},
+    {PCNT_UNIT_3, A0, A1, A2}
 
 };
 
@@ -112,7 +112,7 @@ void setup() {
 
         setup_PCNT_UNIT(Encoders[i].unit, Encoders[i].pin_clk, Encoders[i].pin_dt );
 
-        Serial.printf("Encoder # %d has been initialized! \n", i );
+        Serial.printf("Encoder # %d has been initialized! \r\n", i );
     };
 };
 
@@ -136,11 +136,11 @@ void loop() {
 
                     case BRIGHTNESS_MODI:
                         Encoders[i].MODI = EFFECT_MODI;
-                        Serial.printf("Encoder %d switched to Modi: %d \n", i, Encoders[i].MODI);
+                        Serial.printf("Encoder %d switched to Modi: %d \r\n", i, Encoders[i].MODI);
                         break;
                     case EFFECT_MODI:
                         Encoders[i].MODI = BRIGHTNESS_MODI;
-                        Serial.printf("Encoder %d switched to Modi: %d \n", i, Encoders[i].MODI);
+                        Serial.printf("Encoder %d switched to Modi: %d \r\n", i, Encoders[i].MODI);
                         break;
                 };
 
@@ -160,14 +160,14 @@ void loop() {
         if (Encoders[i].lastValue != ValueNOW) {
             Encoders[i].rotationPending = true;
             Encoders[i].TimeOfLastRotation = millis();
-            Serial.printf("Encoder %d has a NEW Value: %d \n", i, ValueNOW);
+            Serial.printf("Encoder %d has a NEW Value: %d \r\n", i, ValueNOW);
             Encoders[i].lastValue = ValueNOW;
         };
 
         // - if a rotation value has changed and is pending to be forwared
         if (Encoders[i].rotationPending && millis() - Encoders[i].TimeOfLastRotation >= 300) {
             Encoders[i].rotationPending = false;
-            Serial.printf("Encoder %d has a CONFIRMED Value: %d \n", i, ValueNOW );
+            Serial.printf("Encoder %d has a CONFIRMED Value: %d \r\n", i, ValueNOW );
         }
 
     };
