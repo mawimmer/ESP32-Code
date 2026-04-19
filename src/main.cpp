@@ -22,7 +22,9 @@ bool ledState = LOW;
 
 enum Rotary_Encoder_MODI {
     BRIGHTNESS_MODI,
-    EFFECT_MODI
+    EFFECT_MODI,
+    TOGGLE_ON,
+    TOGGLE_OFF
 };
 
 enum STATE_HIGH_LOW {
@@ -43,9 +45,14 @@ struct RotaryEncoder{
 
     //State Machine
 
-    unsigned long TimeOfLastClick = 0;
+    volatile unsigned long TimeOfLastClick = 0;
+    volatile unsigned long TimeOfLastRelease = 0;
+    volatile unsigned long lastEdge = 0;
+
     unsigned long TimeOfLastRotation = 0;
     bool rotationPending = false;
+    bool turnedOn = false;
+
     volatile bool buttonPressedFlag = false;
 
     enum Rotary_Encoder_MODI MODI = BRIGHTNESS_MODI;
@@ -103,7 +110,23 @@ RotaryEncoder Encoders[NUM_ENCODERS]{
 
 void IRAM_ATTR buttonISR(void* arg) {
     RotaryEncoder* encoder = static_cast<RotaryEncoder*>(arg);
-    encoder->buttonPressedFlag = true; 
+
+    if(millis() - encoder->lastEdge >= 50) {
+
+        encoder->buttonPressedFlag = true; 
+
+        if(gpio_get_level(encoder->pin_sw) == LOW) {
+
+        encoder->lastEdge = millis();
+        encoder->TimeOfLastClick = encoder->lastEdge;
+
+        } else {
+
+        encoder->lastEdge = millis();
+        encoder->TimeOfLastRelease = encoder->lastEdge;
+        };
+
+    };
 
 };
 
@@ -123,7 +146,7 @@ void setup() {
         gpio_set_direction(Encoders[i].pin_sw, GPIO_MODE_INPUT);
         gpio_set_pull_mode(Encoders[i].pin_sw, GPIO_PULLUP_ONLY);
 
-        gpio_set_intr_type(Encoders[i].pin_sw, GPIO_INTR_NEGEDGE);
+        gpio_set_intr_type(Encoders[i].pin_sw, GPIO_INTR_ANYEDGE);
         gpio_isr_handler_add(Encoders[i].pin_sw, buttonISR, &Encoders[i]);
 
         setup_PCNT_UNIT(Encoders[i].unit, Encoders[i].pin_clk, Encoders[i].pin_dt );
