@@ -327,21 +327,6 @@ void loop() {
             // Referencing Encoder to Encoder[i] Pointer in the for Scope
             RotaryEncoder& Encoder = Encoders[i];
 
-            if( Encoder.eventRotation ) {
-                Encoder.eventRotation = false;
-                switch(Encoder.MODI) {
-                    case BRIGHTNESS_MODI:
-                        Serial.printf("Changing Brightness - Encoder %d\r\n", i);
-                        Encoder.deltaValue = 0;
-                        break;
-                    case EFFECT_MODI:
-                        Serial.printf("Changing Effect - Encoder %d\r\n", i);
-                        Encoder.deltaValue = 0;
-                        break;   
-                };
-
-            };
-
             if( Encoder.eventLongPressed ) {
                 Encoder.MODI = TOGGLED_OFF;
                 pcnt_counter_pause(Encoder.unit);
@@ -364,6 +349,20 @@ void loop() {
                         break;
                 };
             };
+
+            if( Encoder.eventRotation ) {
+                Encoder.eventRotation = false;
+                switch(Encoder.MODI) {
+                    case BRIGHTNESS_MODI:
+                        Serial.printf("Changing Brightness - Encoder %d\r\n", i);
+                        break;
+                    case EFFECT_MODI:
+                        Serial.printf("Changing Effect - Encoder %d\r\n", i);
+                        break;   
+                };
+                Encoder.deltaValue = 0;
+            };
+
         };
     };
 
