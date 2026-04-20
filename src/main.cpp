@@ -36,6 +36,14 @@ bool ledState = LOW;
 const int LongShortPressThreshold = 500;
 
 
+
+/**
+ * Global Events Flag
+ */
+
+ bool global_eventPending = false;
+
+
 /**
  * Click Modi
  */
@@ -43,10 +51,8 @@ const int LongShortPressThreshold = 500;
 enum Rotary_Encoder_MODI {
     BRIGHTNESS_MODI,
     EFFECT_MODI,
-    TOGGLE_ON,
-    TOGGLE_OFF
+    TOGGLED_OFF
 };
-
 
 /**
  * Struct Holding Information of each Encoder
@@ -67,7 +73,8 @@ struct RotaryEncoder{
      * Rotation Variables
      */
 
-    int16_t lastValue = 0;
+    //int16_t lastValue = 0;
+    int16_t deltaValue = 0;
     unsigned long TimeOfLastRotation = 0;
     bool rotationPending = false;
 
@@ -85,10 +92,12 @@ struct RotaryEncoder{
      * Click and Rotation Execution States
      */
 
-    enum Rotary_Encoder_MODI MODI = BRIGHTNESS_MODI;
-
     bool eventShortPressed = false;
     bool eventLongPressed = false;
+
+    bool eventRotation = false;
+    enum Rotary_Encoder_MODI MODI = TOGGLED_OFF;
+
 
     RotaryEncoder(pcnt_unit_t u, int clk, int dt, int sw):
     unit(u), pin_clk(static_cast<gpio_num_t>(clk)), pin_dt(static_cast<gpio_num_t>(dt)), pin_sw(static_cast<gpio_num_t>(sw)) {};
@@ -127,7 +136,7 @@ void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt){
 
     pcnt_counter_pause(unit);
     pcnt_counter_clear(unit);
-    pcnt_counter_resume(unit);
+    //pcnt_counter_resume(unit); // Is handled by switch case
 
 };
 
@@ -223,7 +232,7 @@ void loop() {
          * Hardware - Click Detection
          */
 
-        // Referencing Encoder to Encoder[i] Pointer in the Loop Scope
+        // Referencing Encoder to Encoder[i] Pointer in the for Scope
         RotaryEncoder& Encoder = Encoders[i];
 
         // If a falling Edge is detected from an Interrupt, the .buttonPressHandled Flag is set "false"
@@ -235,7 +244,9 @@ void loop() {
 
                 // If Pressed Longer or Equal to (const int LongShortPressThreshold) -> Long Press
                 if( timeDifference >= LongShortPressThreshold ) {
-                    Serial.println("LONG PRESS HOLD");
+                    //Serial.println("LONG PRESS HOLD");
+                    Encoder.eventLongPressed = true;
+                    global_eventPending = true;
 
                     // Reset .buttonPressHandled to "true", so no more execution until next button press
                     Encoder.buttonPressHandled = true;
@@ -249,7 +260,9 @@ void loop() {
 
                 // If Pressed Shorter than (const int LongShortPressThreshold) -> Short Press
                 if( timeDifference < LongShortPressThreshold ) {
-                    Serial.println("SHORT PRESS");
+                    //Serial.println("SHORT PRESS");
+                    Encoder.eventShortPressed = true;
+                    global_eventPending = true;
 
                     // Reset .buttonPressHandled to "true", so no more execution until next button press
                     Encoder.buttonPressHandled = true;
@@ -257,7 +270,9 @@ void loop() {
                 // If Pressed Longer or Equal to (const int LongShortPressThreshold) -> Long Press
                 // Actual Edge Case - When CPU takes longer than 500ms to check the Button Press
                 } else {
-                    Serial.println("LONG PRESS RELEASE");
+                    //Serial.println("LONG PRESS RELEASE");
+                    Encoder.eventLongPressed = true;
+                    global_eventPending = true;
 
                     //      Reset .buttonPressHandled to "true", so no more execution until next button press
                     Encoder.buttonPressHandled = true;
@@ -274,56 +289,85 @@ void loop() {
 
         // - if a value has changed
         pcnt_get_counter_value(Encoder.unit, &ValueNOW);
-        if (Encoder.lastValue != ValueNOW) {
+        if (ValueNOW) {
+            pcnt_counter_clear(Encoder.unit);
+            Encoder.deltaValue += ValueNOW;
+
             Encoder.rotationPending = true;
             Encoder.TimeOfLastRotation = millis();
+            
             Serial.printf("Encoder %d has a NEW Value: %d \r\n", i, ValueNOW);
-            Encoder.lastValue = ValueNOW;
+
         };
 
         // - if a rotation value has changed and is pending to be forwared
         if (Encoder.rotationPending && millis() - Encoder.TimeOfLastRotation >= 300) {
             Encoder.rotationPending = false;
-            Serial.printf("Encoder %d has a CONFIRMED Value: %d \r\n", i, Encoder.lastValue );
-        }
+            Encoder.eventRotation = true;
+            global_eventPending = true;
+            
+            Serial.printf("Encoder %d has a CONFIRMED Delta: %d \r\n", i, Encoder.deltaValue );
+
+        };
+
 
     };
 
 
+    /**
+     * Software - Input Processing
+     */
+
+    if(global_eventPending) {
+        //Serial.println("GLOBAL FIRED");
+        global_eventPending = false;
+
+        for( int i = 0 ; i < NUM_ENCODERS ; i++ ) {
+
+            // Referencing Encoder to Encoder[i] Pointer in the for Scope
+            RotaryEncoder& Encoder = Encoders[i];
+
+            if( Encoder.eventRotation ) {
+                Encoder.eventRotation = false;
+                switch(Encoder.MODI) {
+                    case BRIGHTNESS_MODI:
+                        Serial.printf("Changing Brightness - Encoder %d\r\n", i);
+                        Encoder.deltaValue = 0;
+                        break;
+                    case EFFECT_MODI:
+                        Serial.printf("Changing Effect - Encoder %d\r\n", i);
+                        Encoder.deltaValue = 0;
+                        break;   
+                };
+
+            };
+
+            if( Encoder.eventLongPressed ) {
+                Encoder.MODI = TOGGLED_OFF;
+                pcnt_counter_pause(Encoder.unit);
+                Encoder.eventLongPressed = false;
+            };
+
+            if( Encoder.eventShortPressed ) {
+                Encoder.eventShortPressed = false;
+
+                switch(Encoder.MODI) {
+                    case TOGGLED_OFF:
+                        Encoder.MODI = BRIGHTNESS_MODI;
+                        pcnt_counter_resume(Encoder.unit);
+                        break;
+                    case BRIGHTNESS_MODI:
+                        Encoder.MODI = EFFECT_MODI;
+                        break;
+                    case EFFECT_MODI:
+                        Encoder.MODI = BRIGHTNESS_MODI;
+                        break;
+                };
+            };
+        };
+    };
 
 
-
-    
-
-            
-        //     if(gpio_get_level(Encoder.pin_sw) == LOW && Encoder.lastButtonState == STATE_HIGH){
-                
-        //         if(millis() - Encoder.TimeOfLastClick >= 500){
-
-        //             Encoder.lastButtonState = STATE_LOW;
-
-        //             Encoder.TimeOfLastClick = millis();
-
-        //             switch(Encoder.MODI) {
-
-        //                 case BRIGHTNESS_MODI:
-        //                     Encoder.MODI = EFFECT_MODI;
-        //                     Serial.printf("Encoder %d switched to Modi: %d \r\n", i, Encoder.MODI);
-        //                     break;
-        //                 case EFFECT_MODI:
-        //                     Encoder.MODI = BRIGHTNESS_MODI;
-        //                     Serial.printf("Encoder %d switched to Modi: %d \r\n", i, Encoder.MODI);
-        //                     break;
-        //             };
-
-        //         };
-            
-        //     };
-        // };
-
-        // if(gpio_get_level(Encoder.pin_sw) == HIGH && Encoder.lastButtonState == STATE_LOW){
-        //     Encoder.lastButtonState = STATE_HIGH;
-        // };
 
 
     //Code running check
