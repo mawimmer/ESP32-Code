@@ -12,8 +12,29 @@
     },
     { 
       "type": "wokwi-ky-040", 
-      "id": "encoder", 
+      "id": "encoder0", 
+      "top": -80, 
+      "left": -150, 
+      "attrs": {} 
+    },
+        { 
+      "type": "wokwi-ky-040", 
+      "id": "encoder1", 
+      "top": 0, 
+      "left": -150, 
+      "attrs": {} 
+    },
+            { 
+      "type": "wokwi-ky-040", 
+      "id": "encoder2", 
       "top": 80, 
+      "left": -150, 
+      "attrs": {} 
+    },
+            { 
+      "type": "wokwi-ky-040", 
+      "id": "encoder3", 
+      "top": 160, 
       "left": -150, 
       "attrs": {} 
     }
@@ -21,11 +42,26 @@
   "connections": [
     [ "nano:TX1", "$serialMonitor:RX", "", [] ],
     [ "nano:RX0", "$serialMonitor:TX", "", [] ],
-    [ "encoder:GND", "nano:GND.1", "black", [ "v0" ] ],
-    [ "encoder:VCC", "nano:3V3", "red", [ "v0" ] ],
-    [ "encoder:CLK", "nano:D2", "green", [ "v0" ] ],
-    [ "encoder:DT", "nano:D3", "yellow", [ "v0" ] ],
-    [ "encoder:SW", "nano:D4", "blue", [ "v0" ] ]
+    [ "encoder0:GND", "nano:GND.1", "black", [ "v0" ] ],
+    [ "encoder0:VCC", "nano:3V3", "red", [ "v0" ] ],
+    [ "encoder0:CLK", "nano:D2", "green", [ "v0" ] ],
+    [ "encoder0:DT", "nano:D3", "yellow", [ "v0" ] ],
+    [ "encoder0:SW", "nano:D4", "blue", [ "v0" ] ],
+    [ "encoder1:GND", "nano:GND.1", "black", [ "v0" ] ],
+    [ "encoder1:VCC", "nano:3V3", "red", [ "v0" ] ],
+    [ "encoder1:CLK", "nano:D5", "green", [ "v0" ] ],
+    [ "encoder1:DT", "nano:D6", "yellow", [ "v0" ] ],
+    [ "encoder1:SW", "nano:D7", "blue", [ "v0" ] ],
+    [ "encoder2:GND", "nano:GND.1", "black", [ "v0" ] ],
+    [ "encoder2:VCC", "nano:3V3", "red", [ "v0" ] ],
+    [ "encoder2:CLK", "nano:D8", "green", [ "v0" ] ],
+    [ "encoder2:DT", "nano:D9", "yellow", [ "v0" ] ],
+    [ "encoder2:SW", "nano:D10", "blue", [ "v0" ] ],
+    [ "encoder3:GND", "nano:GND.1", "black", [ "v0" ] ],
+    [ "encoder3:VCC", "nano:3V3", "red", [ "v0" ] ],
+    [ "encoder3:CLK", "nano:A0", "green", [ "v0" ] ],
+    [ "encoder3:DT", "nano:A1", "yellow", [ "v0" ] ],
+    [ "encoder3:SW", "nano:A2", "blue", [ "v0" ] ]
   ],
   "serialMonitor": {
   "collapse": true,
