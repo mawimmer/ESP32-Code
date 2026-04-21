@@ -6,6 +6,9 @@
 //Serial0 for reading content in VSC Terminal -- needs to be removed for real hardware
 #define Serial Serial0
 
+#include "driver/ledc.h"
+#include <algorithm>
+
 /**
  * Number of Simulated Encoders
  */
@@ -77,6 +80,7 @@ struct RotaryEncoder{
     int16_t deltaValue = 0;
     unsigned long TimeOfLastRotation = 0;
     bool rotationPending = false;
+    int rotationDelay = 0;
 
     /**
      * Click Variables
@@ -191,10 +195,46 @@ void IRAM_ATTR buttonISR(void* arg) {
 
 };
 
+#define LEDC_TIMER              LEDC_TIMER_0
+#define LEDC_MODE               LEDC_LOW_SPEED_MODE
+#define LEDC_OUTPUT_IO          (4) // Define the output GPIO
+#define LEDC_CHANNEL            LEDC_CHANNEL_0
+#define LEDC_DUTY_RES           LEDC_TIMER_13_BIT // Set duty resolution to 13 bits
+#define LEDC_DUTY               (0) // Set duty to 50%. ((2 ** 13) - 1) * 50% = 4095
+#define LEDC_FREQUENCY          (5000) // Frequency in Hertz. Set frequency at 5 kHz
+
+int32_t currentDuty = LEDC_DUTY;
+
+static void example_ledc_init(void)
+{
+    // Prepare and then apply the LEDC PWM timer configuration
+    ledc_timer_config_t ledc_timer = {
+        .speed_mode       = LEDC_MODE,
+        .duty_resolution  = LEDC_DUTY_RES,
+        .timer_num        = LEDC_TIMER,
+        .freq_hz          = LEDC_FREQUENCY,  // Set output frequency at 5 kHz
+        .clk_cfg          = LEDC_AUTO_CLK
+    };
+    ESP_ERROR_CHECK(ledc_timer_config(&ledc_timer));
+
+    // Prepare and then apply the LEDC PWM channel configuration
+    ledc_channel_config_t ledc_channel = {
+        .gpio_num       = LEDC_OUTPUT_IO,
+        .speed_mode     = LEDC_MODE,
+        .channel        = LEDC_CHANNEL,
+        .intr_type      = LEDC_INTR_DISABLE,
+        .timer_sel      = LEDC_TIMER,
+        .duty           = 0, // Set duty to 0%
+        .hpoint         = 0
+    };
+    ESP_ERROR_CHECK(ledc_channel_config(&ledc_channel));
+}
+
 void setup() {
     Serial.begin(115200);
     Serial.printf("ESP-IDF Version is: %s\r\n", esp_get_idf_version());
     pinMode(LED_BUILTIN, OUTPUT);
+
 
     gpio_install_isr_service(0);
 
@@ -217,6 +257,15 @@ void setup() {
 
         Serial.printf("Encoder # %d has been initialized! \r\n", i );
     };
+
+    // Set the LEDC peripheral configuration
+    example_ledc_init();
+    // Set duty to 50%
+    ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, LEDC_DUTY));
+    // Update duty to apply the new value
+    ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, LEDC_CHANNEL));
+
+    Serial.println((int32_t)ledc_get_duty(LEDC_MODE, LEDC_CHANNEL));
 
 
 };
@@ -301,7 +350,7 @@ void loop() {
         };
 
         // - if a rotation value has changed and is pending to be forwared
-        if (Encoder.rotationPending && millis() - Encoder.TimeOfLastRotation >= 300) {
+        if (Encoder.rotationPending && millis() - Encoder.TimeOfLastRotation >= Encoder.rotationDelay) {
             Encoder.rotationPending = false;
             Encoder.eventRotation = true;
             global_eventPending = true;
@@ -329,6 +378,8 @@ void loop() {
 
             if( Encoder.eventLongPressed ) {
                 Encoder.MODI = TOGGLED_OFF;
+                ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, 0);
+                ledc_update_duty(LEDC_MODE, LEDC_CHANNEL);
                 pcnt_counter_pause(Encoder.unit);
                 Encoder.eventLongPressed = false;
             };
@@ -339,13 +390,23 @@ void loop() {
                 switch(Encoder.MODI) {
                     case TOGGLED_OFF:
                         Encoder.MODI = BRIGHTNESS_MODI;
+
+                        Encoder.rotationDelay = 0;
+
+                        if( currentDuty == 0 ) currentDuty = 100;
+                        ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, currentDuty);
+                        ledc_update_duty(LEDC_MODE, LEDC_CHANNEL);
                         pcnt_counter_resume(Encoder.unit);
                         break;
                     case BRIGHTNESS_MODI:
                         Encoder.MODI = EFFECT_MODI;
+
+                        Encoder.rotationDelay = 150;
                         break;
                     case EFFECT_MODI:
                         Encoder.MODI = BRIGHTNESS_MODI;
+
+                        Encoder.rotationDelay = 0;
                         break;
                 };
             };
@@ -353,9 +414,10 @@ void loop() {
             if( Encoder.eventRotation ) {
                 Encoder.eventRotation = false;
                 switch(Encoder.MODI) {
-                    case BRIGHTNESS_MODI:
-                        Serial.printf("Changing Brightness - Encoder %d\r\n", i);
+                    case BRIGHTNESS_MODI: {
+                        WLED_Brightness_Push(Encoder);
                         break;
+                    }
                     case EFFECT_MODI:
                         Serial.printf("Changing Effect - Encoder %d\r\n", i);
                         break;   
@@ -392,5 +454,24 @@ void loop() {
 
 };
 
+
+void WLED_Brightness_Push ( RotaryEncoder& Encoder ) {
+
+                        int32_t change = Encoder.deltaValue * 500;
+
+                        int32_t newDuty = currentDuty + change;
+
+                        if (newDuty < 100) newDuty = 100;
+                        if (newDuty > 8191) newDuty = 8191;
+
+                        currentDuty = newDuty;
+
+                        Serial.printf("Changing Brightness - Encoder %d - %d\r\n", currentDuty, newDuty);
+
+                        Serial.println(ledc_get_duty(LEDC_MODE,LEDC_CHANNEL));
+
+                        ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, newDuty);
+                        ledc_update_duty(LEDC_MODE, LEDC_CHANNEL);
+}
 
 

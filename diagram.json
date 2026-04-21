@@ -17,27 +17,43 @@
       "left": -150, 
       "attrs": {} 
     },
-        { 
+    { 
       "type": "wokwi-ky-040", 
       "id": "encoder1", 
       "top": 0, 
       "left": -150, 
       "attrs": {} 
     },
-            { 
+    { 
       "type": "wokwi-ky-040", 
       "id": "encoder2", 
       "top": 80, 
       "left": -150, 
       "attrs": {} 
     },
-            { 
+    { 
       "type": "wokwi-ky-040", 
       "id": "encoder3", 
       "top": 160, 
       "left": -150, 
       "attrs": {} 
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led1",
+      "top": -70,
+      "left": 3.8,
+      "attrs": { "color": "red" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r2",
+      "top": -70,
+      "left": 113.3,
+      "rotate": 90,
+      "attrs": { "value": "470" }
     }
+
   ],
   "connections": [
     [ "nano:TX1", "$serialMonitor:RX", "", [] ],
@@ -61,7 +77,12 @@
     [ "encoder3:VCC", "nano:3V3", "red", [ "v0" ] ],
     [ "encoder3:CLK", "nano:A0", "green", [ "v0" ] ],
     [ "encoder3:DT", "nano:A1", "yellow", [ "v0" ] ],
-    [ "encoder3:SW", "nano:A2", "blue", [ "v0" ] ]
+    [ "encoder3:SW", "nano:A2", "blue", [ "v0" ] ],
+
+    [ "r2:2", "nano:A3", "green", [ "h-0.82", "v41.5" ] ],
+
+    [ "led1:A", "r2:1", "green", [ "v0" ] ],
+    [ "led1:C", "nano:GND.1", "black", [ "v0" ] ]
   ],
   "serialMonitor": {
   "collapse": true,
