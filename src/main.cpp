@@ -90,6 +90,14 @@ bool ledState = LOW;
 #define ROTARY_ENCODER_DETENTS 30
 
 /**
+ * Custom Behaviour Settings
+ */
+
+int BRIGHTNESS_ROTATION_DELAY = 40;
+int EFFECT_ROTATION_DELAY = 150;
+
+
+/**
  * Long-ShortPress Setting; LongPress >= Treshold, ShortPress < Treshold
  */
 const int LongShortPressThreshold = 500;
@@ -112,6 +120,17 @@ enum Rotary_Encoder_MODI {
     EFFECT_MODI,
     TOGGLED_OFF
 };
+
+/**
+ * Button State
+ */
+
+enum eventButton {
+    NONE,
+    SHORT_PRESS,
+    LONG_PRESS
+};
+
 
 /**
  * Struct Holding Information of each Encoder
@@ -152,20 +171,24 @@ struct RotaryEncoder{
      * Click and Rotation Execution States
      */
 
-    bool eventShortPressed = false;
-    bool eventLongPressed = false;
+    enum eventButton eventButton = NONE;
 
     bool eventRotation = false;
     enum Rotary_Encoder_MODI MODI = TOGGLED_OFF;
+
+    /**
+     * Brightness and Effect Variables
+     */
+
+    int brightness = 0;
+    int effect = 0;
+
 
 
     RotaryEncoder(pcnt_unit_t u, int clk, int dt, int sw):
     unit(u), pin_clk(static_cast<gpio_num_t>(clk)), pin_dt(static_cast<gpio_num_t>(dt)), pin_sw(static_cast<gpio_num_t>(sw)) {};
 };
 
-void DrawDisplay( RotaryEncoder& Encoder );
-
-void WLED_Brightness_Push ( RotaryEncoder& Encoder );
 
 /**
  * Configures and Sets Up a PCNT unit
@@ -254,55 +277,12 @@ void IRAM_ATTR buttonISR(void* arg) {
 
 };
 
+/**
+ * Refactor Functions
+ * 
+ */
 
-
-void setup() {
-    Serial.begin(115200);
-    Serial.printf("ESP-IDF Version is: %s\r\n", esp_get_idf_version());
-    pinMode(LED_BUILTIN, OUTPUT);
-
-
-
-    //LED STUFF
-
-    example_ledc_init();
-    // Set duty to 50%
-    ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, LEDC_DUTY));
-    // Update duty to apply the new value
-    ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, LEDC_CHANNEL));
-
-
-    //DISPLAY STUFF
-
-    Wire.begin();
-    if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { 
-      Serial.println(F("SSD1306 Fehler: Display nicht gefunden!"));
-    }
-
-    // --- HIER STARTET DAS SCHREIBEN DES TEXTES ---
-
-    // 1. Display-Puffer leeren (löscht alte Artefakte)
-    display.clearDisplay();
-
-    // 2. Textgröße setzen (1 ist Standard, 2 ist doppelt so groß, etc.)
-    display.setTextSize(1);
-
-    // 3. Textfarbe setzen (WHITE bedeutet hier einfach "Pixel leuchtet")
-    display.setTextColor(SSD1306_WHITE);
-
-    // 4. Startposition des Textes setzen (X, Y) - 0,0 ist oben links
-    display.setCursor(0, 10);
-    display.println(F("Brightness:"));
-
-    display.setCursor(0, 20);
-    display.println(F("Effect:"));
- 
-
-    // 6. Den Puffer auf das Display übertragen (WICHTIG!)
-    display.display();
-
-
-    gpio_install_isr_service(0);
+void init_PCNT_UNITS () {
 
     for (int i = 0 ; i < NUM_ENCODERS ; i++) {
 
@@ -324,14 +304,177 @@ void setup() {
         Serial.printf("Encoder # %d has been initialized! \r\n", i );
     };
 
+};
+
+void Brightness_Push ( RotaryEncoder& Encoder ) {
+
+    Serial.println("Brightness_Push");
+
+    int32_t change = Encoder.deltaValue * 500;
+
+    int32_t newDuty = currentDuty + change;
+
+    if (newDuty < 100) newDuty = 100;
+    if (newDuty > 8191) newDuty = 8191;
+
+    currentDuty = newDuty;
+
+    Serial.printf("Changing Brightness - Encoder %d - %d\r\n", currentDuty, newDuty);
+
+    Serial.println(ledc_get_duty(LEDC_MODE,LEDC_CHANNEL));
+
+    ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, newDuty);
+    ledc_update_duty(LEDC_MODE, LEDC_CHANNEL);
+};
+
+void updateDisplayBrightness (RotaryEncoder& Encoder) {
+    Serial.println("updateDisplayBrightness");
+    display.fillRect(90, 10, 50, 20, SSD1306_BLACK);
+    display.setCursor(90, 10);
+    display.println(currentDuty);
+    display.display();
+};
+
+void updateDisplayEffect (RotaryEncoder& Encode) {
+    Serial.println("updateDisplayEffect");
+    display.setCursor(90, 20);
+    display.fillRect(90, 20, 50, 10, SSD1306_BLACK);
+    display.println(currentEffect);
+    display.display();
+};
+
+void ButtonEventHandler(RotaryEncoder& Encoder) {
+    Serial.println("ButtonEventHandler");
+    if( Encoder.eventButton == SHORT_PRESS ) {
+        switch(Encoder.MODI) {
+
+            case TOGGLED_OFF:
+                if( currentDuty == 0 ) currentDuty = 100;
+                ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, currentDuty);
+                ledc_update_duty(LEDC_MODE, LEDC_CHANNEL);
+                Encoder.MODI = BRIGHTNESS_MODI;
+                Encoder.rotationDelay = BRIGHTNESS_ROTATION_DELAY;
+                pcnt_counter_resume(Encoder.unit);
+                updateDisplayBrightness(Encoder);
+                break;
+
+            case BRIGHTNESS_MODI:
+                Encoder.MODI = EFFECT_MODI;
+                Encoder.rotationDelay = EFFECT_ROTATION_DELAY;
+                break;
+
+            case EFFECT_MODI:
+                Encoder.MODI = BRIGHTNESS_MODI;
+                Encoder.rotationDelay = BRIGHTNESS_ROTATION_DELAY;
+                break;
+        };
+
+    } else if( Encoder.eventButton == LONG_PRESS ) {
+        Encoder.MODI = TOGGLED_OFF;
+        ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, 0);
+        ledc_update_duty(LEDC_MODE, LEDC_CHANNEL);
+        pcnt_counter_pause(Encoder.unit);
+    };
+
+    Encoder.eventButton = NONE;
+};
+
+void RotationEventHandler(RotaryEncoder& Encoder) {
+    Serial.println("RotationEventHandler");
+    Encoder.eventRotation = false;
+
+    switch(Encoder.MODI) {
+        case BRIGHTNESS_MODI: {
+            Brightness_Push(Encoder);
+            updateDisplayBrightness(Encoder);
+            break;
+        }
+        case EFFECT_MODI:
+            currentEffect += Encoder.deltaValue;
+            updateDisplayEffect(Encoder);
+            break;   
+    };
+    Encoder.deltaValue = 0;
+};
+
+void global_EventHandler() {
+    Serial.println("global_EventHandler");
+    global_eventPending = false;
+
+    for( int i = 0 ; i < NUM_ENCODERS ; i++ ) {
+        RotaryEncoder& Encoder = Encoders[i];
+
+        if( Encoder.eventButton != NONE ){
+            ButtonEventHandler(Encoder);
+        };
+
+        if( Encoder.eventRotation ) {
+            RotationEventHandler(Encoder);
+        };
+
+    };
+};
+
+/**
+ * Hardware Testing Functions
+ */
+
+void initDisplay () {
+    Wire.begin();
+    if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { 
+      Serial.println(F("SSD1306 Fehler: Display nicht gefunden!"));
+    }
+    // 1. Display-Puffer leeren (löscht alte Artefakte)
+    display.clearDisplay();
+    // 2. Textgröße setzen (1 ist Standard, 2 ist doppelt so groß, etc.)
+    display.setTextSize(1);
+    // 3. Textfarbe setzen (WHITE bedeutet hier einfach "Pixel leuchtet")
+    display.setTextColor(SSD1306_WHITE);
+    // 4. Startposition des Textes setzen (X, Y) - 0,0 ist oben links
+    display.setCursor(0, 10);
+    display.println(F("Brightness:"));
+    display.setCursor(0, 20);
+    display.println(F("Effect:"));
+    // 6. Den Puffer auf das Display übertragen (WICHTIG!)
+    display.display();
+};
+
+
+
+
+
+
+
+void setup() {
+    Serial.begin(115200);
+
+    Serial.printf("ESP-IDF Version is: %s\r\n", esp_get_idf_version());
+
+    pinMode(LED_BUILTIN, OUTPUT);
+
+
+    initDisplay();
+    gpio_install_isr_service(0);
+    init_PCNT_UNITS();
+
+
+    //LED STUFF
+
+    example_ledc_init();
+    // Set duty to 50%
+    ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, LEDC_DUTY));
+    // Update duty to apply the new value
+    ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, LEDC_CHANNEL));
 
 
 };
 
 void loop() {
 
-
-    // checking each Encoder -
+    /**
+     * Hardware Detection
+     * 
+     */
 
     for ( int i = 0 ; i < NUM_ENCODERS; i++ ) {
 
@@ -351,8 +494,8 @@ void loop() {
 
                 // If Pressed Longer or Equal to (const int LongShortPressThreshold) -> Long Press
                 if( timeDifference >= LongShortPressThreshold ) {
-                    //Serial.println("LONG PRESS HOLD");
-                    Encoder.eventLongPressed = true;
+                    Serial.println("LONG PRESS HOLD");
+                    Encoder.eventButton = LONG_PRESS;
                     global_eventPending = true;
 
                     // Reset .buttonPressHandled to "true", so no more execution until next button press
@@ -367,8 +510,8 @@ void loop() {
 
                 // If Pressed Shorter than (const int LongShortPressThreshold) -> Short Press
                 if( timeDifference < LongShortPressThreshold ) {
-                    //Serial.println("SHORT PRESS");
-                    Encoder.eventShortPressed = true;
+                    Serial.println("SHORT PRESS");
+                    Encoder.eventButton = SHORT_PRESS;
                     global_eventPending = true;
 
                     // Reset .buttonPressHandled to "true", so no more execution until next button press
@@ -377,8 +520,8 @@ void loop() {
                 // If Pressed Longer or Equal to (const int LongShortPressThreshold) -> Long Press
                 // Actual Edge Case - When CPU takes longer than 500ms to check the Button Press
                 } else {
-                    //Serial.println("LONG PRESS RELEASE");
-                    Encoder.eventLongPressed = true;
+                    Serial.println("LONG PRESS RELEASE");
+                    Encoder.eventButton = LONG_PRESS;
                     global_eventPending = true;
 
                     //      Reset .buttonPressHandled to "true", so no more execution until next button press
@@ -426,70 +569,7 @@ void loop() {
      */
 
     if(global_eventPending) {
-        //Serial.println("GLOBAL FIRED");
-        global_eventPending = false;
-
-        for( int i = 0 ; i < NUM_ENCODERS ; i++ ) {
-
-            // Referencing Encoder to Encoder[i] Pointer in the for Scope
-            RotaryEncoder& Encoder = Encoders[i];
-
-            if( Encoder.eventLongPressed ) {
-                Encoder.MODI = TOGGLED_OFF;
-                pcnt_counter_pause(Encoder.unit);
-                ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, 0);
-                ledc_update_duty(LEDC_MODE, LEDC_CHANNEL);
-                pcnt_counter_pause(Encoder.unit);
-                Encoder.eventLongPressed = false;
-            };
-
-            if( Encoder.eventShortPressed ) {
-                Encoder.eventShortPressed = false;
-
-                switch(Encoder.MODI) {
-                    case TOGGLED_OFF:
-                        Encoder.MODI = BRIGHTNESS_MODI;
-
-                        if( currentDuty == 0 ) currentDuty = 100;
-                        ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, currentDuty);
-                        ledc_update_duty(LEDC_MODE, LEDC_CHANNEL);
-                        pcnt_counter_resume(Encoder.unit);
-
-                        Encoder.rotationDelay = 0;
-
-                        pcnt_counter_resume(Encoder.unit);
-                        break;
-                    case BRIGHTNESS_MODI:
-                        Encoder.MODI = EFFECT_MODI;
-
-                        Encoder.rotationDelay = 150;
-                        break;
-                    case EFFECT_MODI:
-                        Encoder.MODI = BRIGHTNESS_MODI;
-
-                        Encoder.rotationDelay = 0;
-                        break;
-                };
-            };
-
-            if( Encoder.eventRotation ) {
-                Encoder.eventRotation = false;
-                switch(Encoder.MODI) {
-                    case BRIGHTNESS_MODI: {
-                        DrawDisplay(Encoder);
-                        WLED_Brightness_Push(Encoder);
-                        break;
-                    }
-                    case EFFECT_MODI:
-                        Serial.printf("Changing Effect - Encoder %d\r\n", i);
-                        currentEffect =+ Encoder.deltaValue;
-                        WLED_Brightness_Push(Encoder);
-                        break;   
-                };
-                Encoder.deltaValue = 0;
-            };
-
-        };
+        global_EventHandler();
     };
 
 
@@ -519,46 +599,10 @@ void loop() {
 };
 
 
-void DrawDisplay (RotaryEncoder& Encoder) {
-
-    DisplayINT = currentDuty;
-  
-    // display.clearDisplay();
 
 
-    display.fillRect(90, 10, 50, 20, SSD1306_BLACK);
-    // 4. Startposition des Textes setzen (X, Y) - 0,0 ist oben links
-    display.setCursor(90, 10);
 
-    // 5. Den Text in den Puffer schreiben
-    display.println(DisplayINT);
 
-    display.setCursor(90, 20);
 
-    display.println(currentEffect);
-    
 
-    // 6. Den Puffer auf das Display übertragen (WICHTIG!)
-    display.display();
-  
-};
-
-void WLED_Brightness_Push ( RotaryEncoder& Encoder ) {
-
-                        int32_t change = Encoder.deltaValue * 500;
-
-                        int32_t newDuty = currentDuty + change;
-
-                        if (newDuty < 100) newDuty = 100;
-                        if (newDuty > 8191) newDuty = 8191;
-
-                        currentDuty = newDuty;
-
-                        Serial.printf("Changing Brightness - Encoder %d - %d\r\n", currentDuty, newDuty);
-
-                        Serial.println(ledc_get_duty(LEDC_MODE,LEDC_CHANNEL));
-
-                        ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, newDuty);
-                        ledc_update_duty(LEDC_MODE, LEDC_CHANNEL);
-};
 

@@ -17,62 +17,47 @@
       "left": -150, 
       "attrs": {} 
     },
-        { 
-      "type": "wokwi-ky-040", 
-      "id": "encoder1", 
-      "top": 0, 
-      "left": -150, 
-      "attrs": {} 
-    },
-            { 
-      "type": "wokwi-ky-040", 
-      "id": "encoder2", 
-      "top": 80, 
-      "left": -150, 
-      "attrs": {} 
-    },
-            { 
-      "type": "wokwi-ky-040", 
-      "id": "encoder3", 
-      "top": 160, 
-      "left": -150, 
-      "attrs": {} 
-    },
     {
       "type": "board-ssd1306",
       "id": "oled1",
       "top": -150,
       "left": 48.23,
       "attrs": { "i2cAddress": "0x3c" }
+    },
+        {
+      "type": "wokwi-led",
+      "id": "led1",
+      "top": -150,
+      "left": 200,
+      "attrs": { "color": "red" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r2",
+      "top": -70,
+      "left": 195,
+      "rotate": 90,
+      "attrs": { "value": "470" }
     }
   ],
   "connections": [
     [ "nano:TX1", "$serialMonitor:RX", "", [] ],
     [ "nano:RX0", "$serialMonitor:TX", "", [] ],
+    
     [ "encoder0:GND", "nano:GND.1", "black", [ "v0" ] ],
     [ "encoder0:VCC", "nano:3V3", "red", [ "v0" ] ],
     [ "encoder0:CLK", "nano:D2", "green", [ "v0" ] ],
     [ "encoder0:DT", "nano:D3", "yellow", [ "v0" ] ],
     [ "encoder0:SW", "nano:D4", "blue", [ "v0" ] ],
-    [ "encoder1:GND", "nano:GND.1", "black", [ "v0" ] ],
-    [ "encoder1:VCC", "nano:3V3", "red", [ "v0" ] ],
-    [ "encoder1:CLK", "nano:D5", "green", [ "v0" ] ],
-    [ "encoder1:DT", "nano:D6", "yellow", [ "v0" ] ],
-    [ "encoder1:SW", "nano:D7", "blue", [ "v0" ] ],
-    [ "encoder2:GND", "nano:GND.1", "black", [ "v0" ] ],
-    [ "encoder2:VCC", "nano:3V3", "red", [ "v0" ] ],
-    [ "encoder2:CLK", "nano:D8", "green", [ "v0" ] ],
-    [ "encoder2:DT", "nano:D9", "yellow", [ "v0" ] ],
-    [ "encoder2:SW", "nano:D10", "blue", [ "v0" ] ],
-    [ "encoder3:GND", "nano:GND.1", "black", [ "v0" ] ],
-    [ "encoder3:VCC", "nano:3V3", "red", [ "v0" ] ],
-    [ "encoder3:CLK", "nano:A0", "green", [ "v0" ] ],
-    [ "encoder3:DT", "nano:A1", "yellow", [ "v0" ] ],
-    [ "encoder3:SW", "nano:A2", "blue", [ "v0" ] ],
+
     [ "oled1:GND", "nano:GND.2", "black", [ "v0", "h-150", "v-50" ] ],
     [ "oled1:VCC", "nano:3V3", "red", [ "v0", "h-150", "v-50" ] ],
     [ "oled1:SCL", "nano:A5", "green", [ "v0", "h-150", "v-50" ] ],
-    [ "oled1:SDA", "nano:A4", "green", [ "v0", "h-150", "v-50" ] ]
+    [ "oled1:SDA", "nano:A4", "green", [ "v0", "h-150", "v-50" ] ],
+
+    [ "r2:2", "nano:A3", "green", [ "h-0.82", "v41.5" ] ],
+    [ "led1:A", "r2:1", "green", [ "v0" ] ],
+    [ "led1:C", "nano:GND.1", "black", [ "v0" ] ]
   ],
   "serialMonitor": {
   "collapse": true,
