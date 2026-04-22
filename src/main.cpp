@@ -7,6 +7,8 @@
 
 int DisplayINT = 0;
 
+int currentEffect = 0;
+
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
@@ -290,10 +292,11 @@ void setup() {
 
     // 4. Startposition des Textes setzen (X, Y) - 0,0 ist oben links
     display.setCursor(0, 10);
+    display.println(F("Brightness:"));
 
-    // 5. Den Text in den Puffer schreiben
-    display.println(F("Hallo Welt!"));
-    display.println(F("C++ ist cool."));
+    display.setCursor(0, 20);
+    display.println(F("Effect:"));
+ 
 
     // 6. Den Puffer auf das Display übertragen (WICHTIG!)
     display.display();
@@ -479,6 +482,8 @@ void loop() {
                     }
                     case EFFECT_MODI:
                         Serial.printf("Changing Effect - Encoder %d\r\n", i);
+                        currentEffect =+ Encoder.deltaValue;
+                        WLED_Brightness_Push(Encoder);
                         break;   
                 };
                 Encoder.deltaValue = 0;
@@ -516,18 +521,22 @@ void loop() {
 
 void DrawDisplay (RotaryEncoder& Encoder) {
 
-  DisplayINT += Encoder.deltaValue;
+    DisplayINT = currentDuty;
   
-    display.clearDisplay();
+    // display.clearDisplay();
 
 
-
+    display.fillRect(90, 10, 50, 20, SSD1306_BLACK);
     // 4. Startposition des Textes setzen (X, Y) - 0,0 ist oben links
-    display.setCursor(0, 10);
+    display.setCursor(90, 10);
 
     // 5. Den Text in den Puffer schreiben
-    display.println(F("Count:"));
     display.println(DisplayINT);
+
+    display.setCursor(90, 20);
+
+    display.println(currentEffect);
+    
 
     // 6. Den Puffer auf das Display übertragen (WICHTIG!)
     display.display();

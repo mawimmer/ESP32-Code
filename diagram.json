@@ -41,7 +41,7 @@
     {
       "type": "board-ssd1306",
       "id": "oled1",
-      "top": 175.94,
+      "top": -150,
       "left": 48.23,
       "attrs": { "i2cAddress": "0x3c" }
     }
@@ -69,10 +69,10 @@
     [ "encoder3:CLK", "nano:A0", "green", [ "v0" ] ],
     [ "encoder3:DT", "nano:A1", "yellow", [ "v0" ] ],
     [ "encoder3:SW", "nano:A2", "blue", [ "v0" ] ],
-    [ "oled1:GND", "nano:GND.2", "black", [ "v-28.8", "h57.6" ] ],
-    [ "oled1:VCC", "nano:3V3", "red", [ "v-86.4", "h-67.05" ] ],
-    [ "oled1:SCL", "nano:A5", "green", [ "v-96", "h0.3" ] ],
-    [ "oled1:SDA", "nano:A4", "green", [ "v-105.6", "h-28.73" ] ]
+    [ "oled1:GND", "nano:GND.2", "black", [ "v0", "h-150", "v-50" ] ],
+    [ "oled1:VCC", "nano:3V3", "red", [ "v0", "h-150", "v-50" ] ],
+    [ "oled1:SCL", "nano:A5", "green", [ "v0", "h-150", "v-50" ] ],
+    [ "oled1:SDA", "nano:A4", "green", [ "v0", "h-150", "v-50" ] ]
   ],
   "serialMonitor": {
   "collapse": true,
