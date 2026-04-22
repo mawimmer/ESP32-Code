@@ -310,7 +310,12 @@ void Brightness_Push ( RotaryEncoder& Encoder ) {
 
     Serial.println("Brightness_Push");
 
-    int32_t change = Encoder.deltaValue * 500;
+    float norm = (float)currentDuty / 8191.0f;   // 0.0 → 1.0
+    float factor = 0.2f + 2.0f * norm * norm;    // curve
+
+    int32_t change = Encoder.deltaValue * (int32_t)(factor * 200);
+
+    //int32_t change = Encoder.deltaValue * 500;
 
     int32_t newDuty = currentDuty + change;
 
