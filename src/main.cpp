@@ -445,42 +445,8 @@ void initDisplay () {
 };
 
 
-
-
-
-
-
-void setup() {
-    Serial.begin(115200);
-
-    Serial.printf("ESP-IDF Version is: %s\r\n", esp_get_idf_version());
-
-    pinMode(LED_BUILTIN, OUTPUT);
-
-
-    initDisplay();
-    gpio_install_isr_service(0);
-    init_PCNT_UNITS();
-
-
-    //LED STUFF
-
-    example_ledc_init();
-    // Set duty to 50%
-    ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, LEDC_DUTY));
-    // Update duty to apply the new value
-    ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, LEDC_CHANNEL));
-
-
-};
-
-void loop() {
-
-    /**
-     * Hardware Detection
-     * 
-     */
-
+void updateHardware () {
+    
     for ( int i = 0 ; i < NUM_ENCODERS; i++ ) {
 
         /**
@@ -567,7 +533,44 @@ void loop() {
 
 
     };
+};
 
+
+
+
+void setup() {
+    Serial.begin(115200);
+
+    Serial.printf("ESP-IDF Version is: %s\r\n", esp_get_idf_version());
+
+    pinMode(LED_BUILTIN, OUTPUT);
+
+
+    initDisplay();
+    gpio_install_isr_service(0);
+    init_PCNT_UNITS();
+
+
+    //LED STUFF
+
+    example_ledc_init();
+    // Set duty to 50%
+    ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, LEDC_DUTY));
+    // Update duty to apply the new value
+    ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, LEDC_CHANNEL));
+
+
+};
+
+
+
+void loop() {
+
+    /**
+     * Hardware Detection
+     */
+
+    updateHardware();
 
     /**
      * Software - Input Processing
@@ -576,8 +579,6 @@ void loop() {
     if(global_eventPending) {
         global_EventHandler();
     };
-
-
 
 
     //Code running check
@@ -597,8 +598,6 @@ void loop() {
     
     };
 
-
-    //not sure if this is needed, will pause
     vTaskDelay(pdMS_TO_TICKS(10));
 
 };
