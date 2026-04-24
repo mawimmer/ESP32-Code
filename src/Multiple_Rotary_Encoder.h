@@ -5,6 +5,8 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
+#define Serial Serial0
+
 #ifdef display
 #undef display
 #endif
@@ -16,8 +18,6 @@
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 #define OLED_RESET -1
-#define MY_SDA_PIN 17
-#define MY_SCL_PIN 18
 
 /**
  * Rotary Encoder Specifications
@@ -90,7 +90,7 @@ struct RotaryEncoder {
      */
     int brightness = 0;
     int effect = 0;
-    bool displayON = true;
+    bool displayON = false;
 
     RotaryEncoder(pcnt_unit_t u, int clk, int dt, int sw) :
         unit(u), pin_clk(static_cast<gpio_num_t>(clk)), pin_dt(static_cast<gpio_num_t>(dt)), pin_sw(static_cast<gpio_num_t>(sw)) {};
@@ -154,14 +154,8 @@ private:
 
     Adafruit_SSD1306 oled{SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET};
 
-    void initOLED() {
-        if(!initiatedOLED){
-            Wire.begin(MY_SDA_PIN, MY_SCL_PIN);
-            initiatedOLED = true;
-            if (!oled.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
-                Serial.println(F("SSD1306 Fehler: Display nicht gefunden!"));
-            }
-        };
+    
+    void DrawBasics() {
 
         oled.clearDisplay();
         oled.setTextSize(1);
@@ -171,7 +165,18 @@ private:
         oled.setCursor(0, 20);
         oled.println(F("Effect:"));
         oled.display();
+    };
+
+    void initOLED() {
+        Wire.begin();
+        initiatedOLED = true;
+        if (!oled.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+            Serial.println(F("SSD1306 Fehler: Display nicht gefunden!"));
+        };
+
+        DrawBasics();
     }
+
 
     int BRIGHTNESS_ROTATION_DELAY = 40;
     int EFFECT_ROTATION_DELAY = 150;
@@ -354,7 +359,7 @@ private:
             oled.display();
         } else {
             Encoder.displayON = true;
-            initOLED();
+            DrawBasics();
             updateDisplayBrightness(Encoder);
             updateDisplayEffect(Encoder);
         }
