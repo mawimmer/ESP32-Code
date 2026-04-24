@@ -23,9 +23,11 @@
 const int NUM_ENCODERS = 1;
 bool standalone = true;
 
-
+//
 bool displayON = false;
 int lastUpdate = 0;
+const int deBounceTreshold = 50;
+
 /**
  * Click Modi
  */
@@ -122,20 +124,25 @@ inline void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt) {
  */
 void IRAM_ATTR buttonISR(void* arg) {
     RotaryEncoder& Encoder = *static_cast<RotaryEncoder*>(arg);
-    uint32_t now = millis(); //xTaskGetTickCountFromISR(); -- isr safe but brings issues...
-    if (now - Encoder.lastEdge >= 50) {
-        if (gpio_get_level(Encoder.pin_sw) == LOW) {
-            Encoder.lastEdge = now;
-            Encoder.TimeOfLastClick = Encoder.lastEdge;
-            Encoder.buttonIsPressed = true;
-            Encoder.buttonPressHandled = false;
-            Encoder.buttonWasPressed = false;
-        } else {
-            Encoder.lastEdge = now;
-            Encoder.buttonIsPressed = false;
-            Encoder.buttonWasPressed = true;
-        }
-    }
+    // uint32_t now = millis(); //xTaskGetTickCountFromISR(); -- isr safe but brings issues...
+    // if (now - Encoder.lastEdge >= 50) {
+    //     if (gpio_get_level(Encoder.pin_sw) == LOW) {
+    //         Encoder.lastEdge = now;
+    //         Encoder.TimeOfLastClick = Encoder.lastEdge;
+    //         Encoder.buttonIsPressed = true;
+    //         Encoder.buttonPressHandled = false;
+    //         Encoder.buttonWasPressed = false;
+    //     } else {
+    //         Encoder.lastEdge = now;
+    //         Encoder.buttonIsPressed = false;
+    //         Encoder.buttonWasPressed = true;
+    //     }
+    // }
+
+    Encoder.buttonPressHandled = false;
+    Encoder.lastEdge = millis(); //esp_timer_get_time(); //xTaskGetTickCountFromISR();
+    gpio_intr_disable(Encoder.pin_sw);
+
 }
 
 
@@ -185,7 +192,7 @@ private:
             gpio_set_direction(Encoder.pin_sw, GPIO_MODE_INPUT);
             gpio_set_pull_mode(Encoder.pin_sw, GPIO_PULLUP_ONLY);
 
-            gpio_set_intr_type(Encoder.pin_sw, GPIO_INTR_ANYEDGE);
+            gpio_set_intr_type(Encoder.pin_sw, GPIO_INTR_NEGEDGE);
             gpio_isr_handler_add(Encoder.pin_sw, buttonISR, &Encoder);
 
             setup_PCNT_UNIT(Encoder.unit, Encoder.pin_clk, Encoder.pin_dt);
@@ -199,28 +206,34 @@ private:
             RotaryEncoder& Encoder = Encoders[i];
 
             if (!Encoder.buttonPressHandled) {
-                if (Encoder.buttonIsPressed) {
-                    unsigned long timeDifference = millis() - Encoder.TimeOfLastClick;
+                unsigned long timeDifference = millis() - Encoder.lastEdge;
+                if(timeDifference > deBounceTreshold) {
+                    if (gpio_get_level(Encoder.pin_sw) == LOW) {
+
                     if (timeDifference >= LongShortPressThreshold) {
                         Serial.println("LONG PRESS HOLD");
                         Encoder.eventButton = LONG_PRESS;
                         global_eventPending = true;
                         Encoder.buttonPressHandled = true;
+                        gpio_intr_enable(Encoder.pin_sw);
                     }
-                }
 
-                if (Encoder.buttonWasPressed) {
-                    unsigned long timeDifference = millis() - Encoder.TimeOfLastClick;
-                    if (timeDifference < LongShortPressThreshold) {
-                        Serial.println("SHORT PRESS");
-                        Encoder.eventButton = SHORT_PRESS;
-                        global_eventPending = true;
-                        Encoder.buttonPressHandled = true;
                     } else {
-                        Serial.println("LONG PRESS RELEASE");
-                        Encoder.eventButton = LONG_PRESS;
-                        global_eventPending = true;
-                        Encoder.buttonPressHandled = true;
+
+                        if (timeDifference < LongShortPressThreshold) {
+                            Serial.println("SHORT PRESS");
+                            Encoder.eventButton = SHORT_PRESS;
+                            global_eventPending = true;
+                            Encoder.buttonPressHandled = true;
+                            gpio_intr_enable(Encoder.pin_sw);
+
+                        } else {
+                            Serial.println("LONG PRESS RELEASE");
+                            Encoder.eventButton = LONG_PRESS;
+                            global_eventPending = true;
+                            Encoder.buttonPressHandled = true;
+                            gpio_intr_enable(Encoder.pin_sw);
+                        }
                     }
                 }
             }
