@@ -7,14 +7,6 @@
 
 #define Serial Serial0
 
-#ifdef display
-#undef display
-#endif
-
-#ifdef oled
-#undef oled
-#endif
-
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 #define OLED_RESET -1
@@ -26,9 +18,14 @@
 #define PCNT_LIMIT_LOW -21
 #define ROTARY_ENCODER_DETENTS 30
 
-const int NUM_ENCODERS = 1;
-bool initiatedOLED = false;
 
+//Simulation variables
+const int NUM_ENCODERS = 1;
+bool standalone = true;
+
+
+bool displayON = false;
+int lastUpdate = 0;
 /**
  * Click Modi
  */
@@ -90,7 +87,6 @@ struct RotaryEncoder {
      */
     int brightness = 0;
     int effect = 0;
-    bool displayON = false;
 
     RotaryEncoder(pcnt_unit_t u, int clk, int dt, int sw) :
         unit(u), pin_clk(static_cast<gpio_num_t>(clk)), pin_dt(static_cast<gpio_num_t>(dt)), pin_sw(static_cast<gpio_num_t>(sw)) {};
@@ -126,25 +122,22 @@ inline void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt) {
  */
 void IRAM_ATTR buttonISR(void* arg) {
     RotaryEncoder& Encoder = *static_cast<RotaryEncoder*>(arg);
-
-    if (millis() - Encoder.lastEdge >= 50) {
+    uint32_t now = millis(); //xTaskGetTickCountFromISR(); -- isr safe but brings issues...
+    if (now - Encoder.lastEdge >= 50) {
         if (gpio_get_level(Encoder.pin_sw) == LOW) {
-            Encoder.lastEdge = millis();
+            Encoder.lastEdge = now;
             Encoder.TimeOfLastClick = Encoder.lastEdge;
             Encoder.buttonIsPressed = true;
             Encoder.buttonPressHandled = false;
             Encoder.buttonWasPressed = false;
         } else {
-            Encoder.lastEdge = millis();
+            Encoder.lastEdge = now;
             Encoder.buttonIsPressed = false;
             Encoder.buttonWasPressed = true;
         }
     }
 }
 
-// ------------------------------------------------------------------------
-// Die eigentliche Usermod Klasse
-// ------------------------------------------------------------------------
 
 class Multiple_Rotary_Encoder : public Usermod {
 
@@ -152,29 +145,22 @@ private:
     unsigned long lastBlinkTime = 0;
     bool ledState = LOW;
 
-    Adafruit_SSD1306 oled{SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET};
-
-    
-    void DrawBasics() {
-
-        oled.clearDisplay();
-        oled.setTextSize(1);
-        oled.setTextColor(SSD1306_WHITE);
-        oled.setCursor(0, 10);
-        oled.println(F("Brightness:"));
-        oled.setCursor(0, 20);
-        oled.println(F("Effect:"));
-        oled.display();
-    };
+    Adafruit_SSD1306 OLED_Display{SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET};
 
     void initOLED() {
-        Wire.begin();
-        initiatedOLED = true;
-        if (!oled.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+
+        if(standalone){ Wire.begin(); };
+
+        if (!OLED_Display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
             Serial.println(F("SSD1306 Fehler: Display nicht gefunden!"));
         };
-
-        DrawBasics();
+        OLED_Display.clearDisplay();
+        OLED_Display.setTextSize(1);
+        OLED_Display.setTextColor(SSD1306_WHITE);
+        OLED_Display.setCursor(0, 10);
+        OLED_Display.println(F("Brightness:"));
+        OLED_Display.setCursor(0, 20);
+        OLED_Display.println(F("Effect:"));
     }
 
 
@@ -284,7 +270,6 @@ private:
                     Encoder.MODI = BRIGHTNESS_MODI;
                     Encoder.rotationDelay = BRIGHTNESS_ROTATION_DELAY;
                     pcnt_counter_resume(Encoder.unit);
-                    updateDisplayBrightness(Encoder);
                     break;
                 case BRIGHTNESS_MODI:
                     Encoder.MODI = EFFECT_MODI;
@@ -310,11 +295,11 @@ private:
         switch (Encoder.MODI) {
             case BRIGHTNESS_MODI:
                 Brightness_Push(Encoder);
-                updateDisplayBrightness(Encoder);
+                updateDisplay(Encoder);
                 break;
             case EFFECT_MODI:
                 Encoder.effect += Encoder.deltaValue;
-                updateDisplayEffect(Encoder);
+                updateDisplay(Encoder);
                 break;
             case TOGGLED_OFF:
                 break;
@@ -322,20 +307,23 @@ private:
         Encoder.deltaValue = 0;
     }
 
-    void updateDisplayBrightness(RotaryEncoder& Encoder) {
-        Serial.println("updateDisplayBrightness");
-        oled.fillRect(90, 10, 50, 10, SSD1306_BLACK);
-        oled.setCursor(90, 10);
-        oled.println(Encoder.brightness);
-        oled.display();
-    }
 
-    void updateDisplayEffect(RotaryEncoder& Encoder) {
-        Serial.println("updateDisplayEffect");
-        oled.fillRect(90, 20, 50, 10, SSD1306_BLACK);
-        oled.setCursor(90, 20);
-        oled.println(Encoder.effect);
-        oled.display();
+    void updateDisplay(RotaryEncoder& Encoder) {
+
+        if( millis() - lastUpdate >= 50 ) {
+            lastUpdate = millis();
+
+            Serial.println("updateDisplayEffect");
+
+            OLED_Display.fillRect(90, 10, 50, 10, SSD1306_BLACK);
+            OLED_Display.setCursor(90, 10);
+            OLED_Display.println(Encoder.brightness);
+            OLED_Display.fillRect(90, 20, 50, 10, SSD1306_BLACK);
+            OLED_Display.setCursor(90, 20);
+            OLED_Display.println(Encoder.effect);
+            OLED_Display.display();
+        };
+
     }
 
     void Brightness_Push(RotaryEncoder& Encoder) {
@@ -353,15 +341,14 @@ private:
     }
 
     void OnOffDisplay(RotaryEncoder& Encoder) {
-        if(Encoder.displayON){
-            Encoder.displayON = false;
-            oled.clearDisplay();
-            oled.display();
+        if(displayON){
+            displayON = false;
+            OLED_Display.ssd1306_command(SSD1306_DISPLAYOFF);
+            return;
         } else {
-            Encoder.displayON = true;
-            DrawBasics();
-            updateDisplayBrightness(Encoder);
-            updateDisplayEffect(Encoder);
+            displayON = true;
+            OLED_Display.ssd1306_command(SSD1306_DISPLAYON);
+            return;
         }
 
     };
