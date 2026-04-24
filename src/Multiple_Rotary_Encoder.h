@@ -5,11 +5,13 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
-#define Serial Serial0
+//#define Serial Serial0
 
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 #define OLED_RESET -1
+#define MY_SDA_PIN 17
+#define MY_SCL_PIN 18
 
 /**
  * Rotary Encoder Specifications
@@ -21,11 +23,13 @@
 
 //Simulation variables
 const int NUM_ENCODERS = 1;
-bool standalone = true;
+bool standalone = false;
+
 
 
 bool displayON = false;
-int lastUpdate = 0;
+volatile unsigned long lastUpdate = 0;
+
 /**
  * Click Modi
  */
@@ -68,11 +72,13 @@ struct RotaryEncoder {
     /**
      * Click Variables
      */
-    volatile unsigned long TimeOfLastClick = 0;
-    volatile unsigned long lastEdge = 0;
+    volatile uint32_t TimeOfLastClick = 0;
+    volatile uint32_t TimeOfButtonRelease = 0;
+    volatile uint32_t lastEdge = 0;
     volatile bool buttonIsPressed = false;
     volatile bool buttonWasPressed = false;
     volatile bool buttonPressHandled = true;
+    volatile int lastPinLevel = HIGH;  // Track last known state to detect state CHANGES
 
     /**
      * Click and Rotation Execution States
@@ -122,19 +128,26 @@ inline void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt) {
  */
 void IRAM_ATTR buttonISR(void* arg) {
     RotaryEncoder& Encoder = *static_cast<RotaryEncoder*>(arg);
-    uint32_t now = millis(); //xTaskGetTickCountFromISR(); -- isr safe but brings issues...
-    if (now - Encoder.lastEdge >= 50) {
-        if (gpio_get_level(Encoder.pin_sw) == LOW) {
-            Encoder.lastEdge = now;
-            Encoder.TimeOfLastClick = Encoder.lastEdge;
-            Encoder.buttonIsPressed = true;
-            Encoder.buttonPressHandled = false;
-            Encoder.buttonWasPressed = false;
-        } else {
-            Encoder.lastEdge = now;
-            Encoder.buttonIsPressed = false;
-            Encoder.buttonWasPressed = true;
-        }
+    
+    uint32_t now = xTaskGetTickCountFromISR() * portTICK_PERIOD_MS;
+    
+    if (now - Encoder.lastEdge < 100) {
+        return;  // Ignore bounces
+    }
+    
+    Encoder.lastEdge = now;
+    int pinLevel = gpio_get_level(Encoder.pin_sw);
+    
+    if (pinLevel == LOW && !Encoder.buttonIsPressed) {
+        // Button PRESSED (first time, not a bounce)
+        Encoder.TimeOfLastClick = now;  // Only set on initial press
+        Encoder.buttonIsPressed = true;
+        Encoder.buttonPressHandled = false;
+    } else if (pinLevel == HIGH && Encoder.buttonIsPressed) {
+        // Button RELEASED
+        Encoder.TimeOfButtonRelease = now;  // Capture release time immediately
+        Encoder.buttonIsPressed = false;
+        Encoder.buttonWasPressed = true;
     }
 }
 
@@ -149,7 +162,7 @@ private:
 
     void initOLED() {
 
-        if(standalone){ Wire.begin(); };
+        Wire.begin(MY_SDA_PIN, MY_SCL_PIN);
 
         if (!OLED_Display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
             Serial.println(F("SSD1306 Fehler: Display nicht gefunden!"));
@@ -161,6 +174,8 @@ private:
         OLED_Display.println(F("Brightness:"));
         OLED_Display.setCursor(0, 20);
         OLED_Display.println(F("Effect:"));
+        OLED_Display.display();
+        Serial.println("Display initialized!");
     }
 
 
@@ -199,43 +214,38 @@ private:
             RotaryEncoder& Encoder = Encoders[i];
 
             if (!Encoder.buttonPressHandled) {
-                if (Encoder.buttonIsPressed) {
-                    unsigned long timeDifference = millis() - Encoder.TimeOfLastClick;
-                    if (timeDifference >= LongShortPressThreshold) {
-                        Serial.println("LONG PRESS HOLD");
-                        Encoder.eventButton = LONG_PRESS;
-                        global_eventPending = true;
-                        Encoder.buttonPressHandled = true;
-                    }
-                }
-
                 if (Encoder.buttonWasPressed) {
-                    unsigned long timeDifference = millis() - Encoder.TimeOfLastClick;
-                    if (timeDifference < LongShortPressThreshold) {
-                        Serial.println("SHORT PRESS");
+                    // Calculate duration from press to release (captured in ISR)
+                    uint32_t pressDuration = Encoder.TimeOfButtonRelease - Encoder.TimeOfLastClick;
+                    
+                    if (pressDuration < LongShortPressThreshold) {
+                        Serial.printf("SHORT PRESS (duration: %lu ms)\n", pressDuration);
                         Encoder.eventButton = SHORT_PRESS;
-                        global_eventPending = true;
-                        Encoder.buttonPressHandled = true;
                     } else {
-                        Serial.println("LONG PRESS RELEASE");
+                        Serial.printf("LONG PRESS (duration: %lu ms)\n", pressDuration);
                         Encoder.eventButton = LONG_PRESS;
-                        global_eventPending = true;
-                        Encoder.buttonPressHandled = true;
                     }
+                    
+                    global_eventPending = true;
+                    Encoder.buttonPressHandled = true;
+                    Encoder.buttonWasPressed = false;
                 }
             }
 
+            // Rest stays the same...
             int16_t ValueNOW;
             pcnt_get_counter_value(Encoder.unit, &ValueNOW);
+
+            
             if (ValueNOW) {
                 pcnt_counter_clear(Encoder.unit);
                 Encoder.deltaValue += ValueNOW;
                 Encoder.rotationPending = true;
-                Encoder.TimeOfLastRotation = millis();
-                Serial.printf("Encoder %d has a NEW Value: %d \r\n", i, ValueNOW);
+                Encoder.TimeOfLastRotation = xTaskGetTickCount() * portTICK_PERIOD_MS;
+                Serial.printf("Encoder %d has a NEW Value: %d .Time of last Rotation: %d \r\n", i, ValueNOW, Encoder.TimeOfLastRotation);
             }
 
-            if (Encoder.rotationPending && millis() - Encoder.TimeOfLastRotation >= Encoder.rotationDelay) {
+            if (Encoder.rotationPending && (xTaskGetTickCount() * portTICK_PERIOD_MS) - Encoder.TimeOfLastRotation >= Encoder.rotationDelay) {
                 Encoder.rotationPending = false;
                 Encoder.eventRotation = true;
                 global_eventPending = true;
@@ -266,16 +276,19 @@ private:
         if (Encoder.eventButton == SHORT_PRESS) {
             switch (Encoder.MODI) {
                 case TOGGLED_OFF:
+                    Serial.println("was TOGGLED OFF - now BRIGHTNESS");
                     OnOffDisplay(Encoder);
                     Encoder.MODI = BRIGHTNESS_MODI;
                     Encoder.rotationDelay = BRIGHTNESS_ROTATION_DELAY;
                     pcnt_counter_resume(Encoder.unit);
                     break;
                 case BRIGHTNESS_MODI:
+                    Serial.println("was BRIGHTNESS - now EFFECT");
                     Encoder.MODI = EFFECT_MODI;
                     Encoder.rotationDelay = EFFECT_ROTATION_DELAY;
                     break;
                 case EFFECT_MODI:
+                    Serial.println("was EFFECT- now BRIGHTNESS");
                     Encoder.MODI = BRIGHTNESS_MODI;
                     Encoder.rotationDelay = BRIGHTNESS_ROTATION_DELAY;
                     break;
@@ -313,7 +326,7 @@ private:
         if( millis() - lastUpdate >= 50 ) {
             lastUpdate = millis();
 
-            Serial.println("updateDisplayEffect");
+            Serial.println("updateDisplay");
 
             OLED_Display.fillRect(90, 10, 50, 10, SSD1306_BLACK);
             OLED_Display.setCursor(90, 10);
@@ -342,10 +355,12 @@ private:
 
     void OnOffDisplay(RotaryEncoder& Encoder) {
         if(displayON){
+            Serial.println("Display OFF");
             displayON = false;
             OLED_Display.ssd1306_command(SSD1306_DISPLAYOFF);
             return;
         } else {
+            Serial.println("Display ON");
             displayON = true;
             OLED_Display.ssd1306_command(SSD1306_DISPLAYON);
             return;
@@ -356,28 +371,21 @@ private:
 public:
     void setup() override {
         pinMode(LED_BUILTIN, OUTPUT);
-        initOLED();
+
+    for (int i = 0; i < NUM_ENCODERS; i++) {
+        Encoders[i].rotationDelay = BRIGHTNESS_ROTATION_DELAY;
+    }
         gpio_install_isr_service(0);
+        initOLED();
         init_PCNT_UNITS();
     }
 
     void loop() override {
+
         updateHardware();
 
         if (global_eventPending) {
             global_EventHandler();
-        }
-
-        static bool initialized = false;
-        if (millis() - lastBlinkTime >= 500) {
-            lastBlinkTime = millis();
-            ledState = !ledState;
-            digitalWrite(LED_BUILTIN, ledState);
-
-            if (!initialized) {
-                Serial.println("ESP32 is alive!");
-                initialized = true;
-            }
         }
     }
 };
