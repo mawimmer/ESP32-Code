@@ -21,14 +21,28 @@
 #define ROTARY_ENCODER_DETENTS 30
 
 
+
+const int MAX_ENCODERS = 4;
+int NUM_ENCODERS = 1;
+
 //Simulation variables
-const int NUM_ENCODERS = 1;
 bool standalone = false;
 
 
 
 bool displayON = false;
 volatile unsigned long lastUpdate = 0;
+
+
+
+//Config Variables
+
+static const char _name[] PROGMEM = "Multiple Rotary Encoder";
+static const char _enabled[] PROGMEM = "Enabled";
+static const char _pinCLK[] PROGMEM = "Pin_CLK";
+static const char _pinDT[] PROGMEM = "Pin_DT";
+static const char _pinSW[] PROGMEM = "Pin_SW";
+static const char _segID[] PROGMEM = "Segment_ID";
 
 /**
  * Click Modi
@@ -73,13 +87,10 @@ struct RotaryEncoder {
      * Click Variables
      */
     volatile uint32_t TimeOfLastClick = 0;
-    volatile uint32_t TimeOfButtonRelease = 0;
     volatile uint32_t lastEdge = 0;
     volatile bool buttonIsPressed = false;
     volatile bool buttonWasPressed = false;
     volatile bool buttonPressHandled = true;
-    volatile bool longPressHandled = false;  // Track if long press was already fired
-    volatile int lastPinLevel = HIGH;  // Track last known state to detect state CHANGES
 
     /**
      * Click and Rotation Execution States
@@ -95,8 +106,14 @@ struct RotaryEncoder {
     int brightness = 0;
     int effect = 0;
 
-    RotaryEncoder(pcnt_unit_t u, int clk, int dt, int sw) :
-        unit(u), pin_clk(static_cast<gpio_num_t>(clk)), pin_dt(static_cast<gpio_num_t>(dt)), pin_sw(static_cast<gpio_num_t>(sw)) {};
+    /**
+     * Wled variables
+     */
+
+    int8_t segmentID;
+
+    RotaryEncoder(pcnt_unit_t u, int clk, int dt, int sw, int8_t seg) :
+        unit(u), pin_clk(static_cast<gpio_num_t>(clk)), pin_dt(static_cast<gpio_num_t>(dt)), pin_sw(static_cast<gpio_num_t>(sw)), segmentID(seg){};
 };
 
 /**
@@ -132,24 +149,26 @@ void IRAM_ATTR buttonISR(void* arg) {
     
     uint32_t now = xTaskGetTickCountFromISR() * portTICK_PERIOD_MS;
     
-    if (now - Encoder.lastEdge < 100) {
+    if (now - Encoder.lastEdge < 50) {
         return;  // Ignore bounces
     }
     
     Encoder.lastEdge = now;
-    int pinLevel = gpio_get_level(Encoder.pin_sw);
     
-    if (pinLevel == LOW && !Encoder.buttonIsPressed) {
-        // Button PRESSED (first time, not a bounce)
+    if (!Encoder.buttonIsPressed) {
+        // Button PRESSED
         Encoder.TimeOfLastClick = now;  // Only set on initial press
         Encoder.buttonIsPressed = true;
+        Encoder.buttonWasPressed = false;
         Encoder.buttonPressHandled = false;
-        Encoder.longPressHandled = false;  // Reset long press flag
-    } else if (pinLevel == HIGH && Encoder.buttonIsPressed) {
+        return;
+    }
+    
+    if (Encoder.buttonIsPressed) {
         // Button RELEASED
-        Encoder.TimeOfButtonRelease = now;  // Capture release time immediately
         Encoder.buttonIsPressed = false;
         Encoder.buttonWasPressed = true;
+        return;
     }
 }
 
@@ -157,8 +176,8 @@ void IRAM_ATTR buttonISR(void* arg) {
 class Multiple_Rotary_Encoder : public Usermod {
 
 private:
-    unsigned long lastBlinkTime = 0;
-    bool ledState = LOW;
+
+    bool enabled = false;
 
     Adafruit_SSD1306 OLED_Display{SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET};
 
@@ -187,8 +206,11 @@ private:
     bool global_eventPending = false;
 
     // Rotary Encoders Pin Declarations (actual ESP32-S3 Pinout Numbers)
-    RotaryEncoder Encoders[NUM_ENCODERS]{
-        {PCNT_UNIT_0, 5, 6, 7}
+    RotaryEncoder Encoders[MAX_ENCODERS]{
+        {PCNT_UNIT_0, 5, 6, 7, 0},
+        {PCNT_UNIT_1, -1, -1, -1, -1},
+        {PCNT_UNIT_2, -1, -1, -1, -1},
+        {PCNT_UNIT_3, -1, -1, -1, -1}
     };
 
     void init_PCNT_UNITS() {
@@ -212,40 +234,66 @@ private:
     }
 
     void updateHardware() {
+
         for (int i = 0; i < NUM_ENCODERS; i++) {
+
+            /**
+             * Hardware - Click Detection
+             */
+
+            // Referencing Encoder to Encoder[i] Pointer in the for Scope
             RotaryEncoder& Encoder = Encoders[i];
 
-            // Check for long press while button is still held down
-            if (Encoder.buttonIsPressed && !Encoder.longPressHandled) {
-                uint32_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
-                uint32_t pressDuration = now - Encoder.TimeOfLastClick;
-                
-                if (pressDuration >= LongShortPressThreshold) {
-                    Serial.printf("LONG PRESS DETECTED (duration: %lu ms)\n", pressDuration);
-                    Encoder.eventButton = LONG_PRESS;
-                    Encoder.longPressHandled = true;  // Prevent repeated triggers
-                    global_eventPending = true;
-                }
-            }
+            // If a falling Edge is detected from an Interrupt, the .buttonPressHandled Flag is set "false"
+            if ( !Encoder.buttonPressHandled ) {
 
-            // Handle button release - for short presses
-            if (!Encoder.buttonPressHandled) {
-                if (Encoder.buttonWasPressed) {
-                    // Only process as SHORT_PRESS if it wasn't already a LONG_PRESS
-                    if (!Encoder.longPressHandled) {
-                        uint32_t pressDuration = Encoder.TimeOfButtonRelease - Encoder.TimeOfLastClick;
-                        
-                        if (pressDuration < LongShortPressThreshold) {
-                            Serial.printf("SHORT PRESS (duration: %lu ms)\n", pressDuration);
-                            Encoder.eventButton = SHORT_PRESS;
-                            global_eventPending = true;
-                        }
-                    }
+                int32_t timeNOW = xTaskGetTickCount() * portTICK_PERIOD_MS; 
+                int32_t timeDifference = timeNOW - Encoder.TimeOfLastClick;
+                Serial.printf("timeNow: %d TimeOfLastClick %d timeDifference: %d timeNow", timeNOW ,Encoder.TimeOfLastClick, timeDifference );
+                Serial.printf("DEBUG: pressed=%d, wasPressed=%d, timeDiff=%ld, threshold=%d\n", 
+                Encoder.buttonIsPressed, Encoder.buttonWasPressed, timeDifference, LongShortPressThreshold);
+
+                // Long Press Detection when Button is Held
+                if( Encoder.buttonIsPressed) {
                     
-                    Encoder.buttonPressHandled = true;
-                    Encoder.buttonWasPressed = false;
-                }
-            }
+
+                    // If Pressed Longer or Equal to (const int LongShortPressThreshold) -> Long Press
+                    if( timeDifference >= LongShortPressThreshold ) {
+                        Serial.println("LONG PRESS HOLD");
+                        Encoder.eventButton = LONG_PRESS;
+                        global_eventPending = true;
+
+                        // Reset .buttonPressHandled to "true", so no more execution until next button press
+                        Encoder.buttonPressHandled = true;
+
+                    };
+                };
+
+                // Long and Short Press Detection when Button is Released
+                if( Encoder.buttonWasPressed) {
+
+                    // If Pressed Shorter than (const int LongShortPressThreshold) -> Short Press
+                    if( timeDifference < LongShortPressThreshold ) {
+                        Serial.println("SHORT PRESS");
+                        Encoder.eventButton = SHORT_PRESS;
+                        global_eventPending = true;
+
+                        // Reset .buttonPressHandled to "true", so no more execution until next button press
+                        Encoder.buttonPressHandled = true;
+
+                    // If Pressed Longer or Equal to (const int LongShortPressThreshold) -> Long Press
+                    // Actual Edge Case - When CPU takes longer than 500ms to check the Button Press
+                    } else {
+                        Serial.println("LONG PRESS RELEASE");
+                        Encoder.eventButton = LONG_PRESS;
+                        global_eventPending = true;
+
+                        //      Reset .buttonPressHandled to "true", so no more execution until next button press
+                        Encoder.buttonPressHandled = true;
+                    };
+
+                };
+            };
 
             // Rest stays the same...
             int16_t ValueNOW;
@@ -290,17 +338,21 @@ private:
         Serial.println("ButtonEventHandler");
         if (Encoder.eventButton == SHORT_PRESS) {
             switch (Encoder.MODI) {
-                case TOGGLED_OFF:
+                case TOGGLED_OFF: {
                     Serial.println("was TOGGLED OFF - now BRIGHTNESS");
                     OnOffDisplay(Encoder);
-                    toggleOnOff();
+
+                    Segment& seg = strip.getSegment(Encoder.segmentID);
+                    seg.setOption(SEG_OPTION_ON, true);
                     stateUpdated(CALL_MODE_BUTTON);
                     updateInterfaces(CALL_MODE_BUTTON);
+
                     Encoder.MODI = BRIGHTNESS_MODI;
                     Encoder.rotationDelay = BRIGHTNESS_ROTATION_DELAY;
                     pcnt_counter_resume(Encoder.unit);
 
                     break;
+                }
                 case BRIGHTNESS_MODI:
                     Serial.println("was BRIGHTNESS - now EFFECT");
                     Encoder.MODI = EFFECT_MODI;
@@ -312,9 +364,10 @@ private:
                     Encoder.rotationDelay = BRIGHTNESS_ROTATION_DELAY;
                     break;
             }
-        } else if (Encoder.eventButton == LONG_PRESS) {
+        } else if (Encoder.eventButton == LONG_PRESS && Encoder.MODI != TOGGLED_OFF) {
             Serial.println("LONG PRESS - Toggling OFF");
-            toggleOnOff();
+            Segment& seg = strip.getSegment(Encoder.segmentID);
+            seg.setOption(SEG_OPTION_ON, false);
             stateUpdated(CALL_MODE_BUTTON);
             updateInterfaces(CALL_MODE_BUTTON);
             Encoder.MODI = TOGGLED_OFF;
@@ -376,7 +429,8 @@ private:
         Encoder.brightness = newDuty;
 
         //strip.setBrightness(Encoder.brightness, false);
-        bri = Encoder.brightness;
+        Segment& seg = strip.getSegment(Encoder.segmentID);
+        seg.opacity = Encoder.brightness;
         stateUpdated(CALL_MODE_BUTTON);
         updateInterfaces(CALL_MODE_BUTTON);
     }
@@ -397,8 +451,12 @@ private:
     };
 
 public:
+
+    inline void enable(bool enable) { enabled = enable; }
+
+    inline bool isEnabled() { return enabled; }
+
     void setup() override {
-        pinMode(LED_BUILTIN, OUTPUT);
 
     for (int i = 0; i < NUM_ENCODERS; i++) {
         Encoders[i].rotationDelay = BRIGHTNESS_ROTATION_DELAY;
@@ -408,7 +466,71 @@ public:
         init_PCNT_UNITS();
     }
 
+    void addToConfig(JsonObject& root) override {
+        JsonObject top = root.createNestedObject(FPSTR(_name));
+        top[FPSTR(_enabled)] = enabled;
+        
+        top["Anzahl Encoder"] = NUM_ENCODERS;
+
+        
+
+        for (int i = 0; i < NUM_ENCODERS; i++) {
+            RotaryEncoder& Encoder = Encoders[i];
+            String encoderName = "Encoder " + String(i);
+            JsonObject encoderObj = top.createNestedObject(encoderName);
+
+            // Wichtig: (int8_t) erzwingt eine saubere Zahl im Webinterface
+            encoderObj[FPSTR(_pinCLK)] = (int8_t)Encoder.pin_clk;
+            encoderObj[FPSTR(_pinDT)]  = (int8_t)Encoder.pin_dt;
+            encoderObj[FPSTR(_pinSW)]  = (int8_t)Encoder.pin_sw;
+            encoderObj[FPSTR(_pinCLK)] = (int8_t)Encoder.pin_clk;
+            encoderObj[FPSTR(_pinDT)]  = (int8_t)Encoder.pin_dt;
+            encoderObj[FPSTR(_pinSW)]  = (int8_t)Encoder.pin_sw;
+            
+            encoderObj[FPSTR(_segID)]  = (int8_t)Encoder.segmentID;
+        }
+    }
+
+    bool readFromConfig(JsonObject& root) override {
+        JsonObject top = root[FPSTR(_name)];
+        if (top.isNull()) return false;
+
+        getJsonValue(top[FPSTR(_enabled)], enabled);
+
+        int8_t newCount = NUM_ENCODERS;
+        getJsonValue(top["Anzahl Encoder"], newCount);
+        NUM_ENCODERS = max(1, min((int)newCount, MAX_ENCODERS));
+
+        for (int i = 0; i < NUM_ENCODERS; i++) {
+            RotaryEncoder& Encoder = Encoders[i];
+            String encoderName = "Encoder " + String(i);
+            JsonObject encoderObj = top[encoderName];
+
+            if (!encoderObj.isNull()) {
+                int8_t pCLK = Encoder.pin_clk;
+                int8_t pDT  = Encoder.pin_dt;
+                int8_t pSW  = Encoder.pin_sw;
+                int8_t sID  = Encoder.segmentID; // <-- NEU: Alter Wert
+
+                getJsonValue(encoderObj[FPSTR(_pinCLK)], pCLK);
+                getJsonValue(encoderObj[FPSTR(_pinDT)], pDT);
+                getJsonValue(encoderObj[FPSTR(_pinSW)], pSW);
+                getJsonValue(encoderObj[FPSTR(_segID)], sID); // <-- NEU: Aus Web-UI lesen
+
+                Encoder.pin_clk = static_cast<gpio_num_t>(pCLK);
+                Encoder.pin_dt  = static_cast<gpio_num_t>(pDT);
+                Encoder.pin_sw  = static_cast<gpio_num_t>(pSW);
+                Encoder.segmentID  = sID; // <-- NEU: Neuen Wert speichern
+            }
+        }
+        return true;
+    }
+
     void loop() override {
+
+        if(!enabled){
+            return;
+        }
 
         updateHardware();
 
