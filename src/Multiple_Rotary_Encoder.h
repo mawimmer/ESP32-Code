@@ -78,6 +78,7 @@ struct RotaryEncoder {
     volatile bool buttonIsPressed = false;
     volatile bool buttonWasPressed = false;
     volatile bool buttonPressHandled = true;
+    volatile bool longPressHandled = false;  // Track if long press was already fired
     volatile int lastPinLevel = HIGH;  // Track last known state to detect state CHANGES
 
     /**
@@ -143,6 +144,7 @@ void IRAM_ATTR buttonISR(void* arg) {
         Encoder.TimeOfLastClick = now;  // Only set on initial press
         Encoder.buttonIsPressed = true;
         Encoder.buttonPressHandled = false;
+        Encoder.longPressHandled = false;  // Reset long press flag
     } else if (pinLevel == HIGH && Encoder.buttonIsPressed) {
         // Button RELEASED
         Encoder.TimeOfButtonRelease = now;  // Capture release time immediately
@@ -213,20 +215,33 @@ private:
         for (int i = 0; i < NUM_ENCODERS; i++) {
             RotaryEncoder& Encoder = Encoders[i];
 
+            // Check for long press while button is still held down
+            if (Encoder.buttonIsPressed && !Encoder.longPressHandled) {
+                uint32_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
+                uint32_t pressDuration = now - Encoder.TimeOfLastClick;
+                
+                if (pressDuration >= LongShortPressThreshold) {
+                    Serial.printf("LONG PRESS DETECTED (duration: %lu ms)\n", pressDuration);
+                    Encoder.eventButton = LONG_PRESS;
+                    Encoder.longPressHandled = true;  // Prevent repeated triggers
+                    global_eventPending = true;
+                }
+            }
+
+            // Handle button release - for short presses
             if (!Encoder.buttonPressHandled) {
                 if (Encoder.buttonWasPressed) {
-                    // Calculate duration from press to release (captured in ISR)
-                    uint32_t pressDuration = Encoder.TimeOfButtonRelease - Encoder.TimeOfLastClick;
-                    
-                    if (pressDuration < LongShortPressThreshold) {
-                        Serial.printf("SHORT PRESS (duration: %lu ms)\n", pressDuration);
-                        Encoder.eventButton = SHORT_PRESS;
-                    } else {
-                        Serial.printf("LONG PRESS (duration: %lu ms)\n", pressDuration);
-                        Encoder.eventButton = LONG_PRESS;
+                    // Only process as SHORT_PRESS if it wasn't already a LONG_PRESS
+                    if (!Encoder.longPressHandled) {
+                        uint32_t pressDuration = Encoder.TimeOfButtonRelease - Encoder.TimeOfLastClick;
+                        
+                        if (pressDuration < LongShortPressThreshold) {
+                            Serial.printf("SHORT PRESS (duration: %lu ms)\n", pressDuration);
+                            Encoder.eventButton = SHORT_PRESS;
+                            global_eventPending = true;
+                        }
                     }
                     
-                    global_eventPending = true;
                     Encoder.buttonPressHandled = true;
                     Encoder.buttonWasPressed = false;
                 }
@@ -278,9 +293,13 @@ private:
                 case TOGGLED_OFF:
                     Serial.println("was TOGGLED OFF - now BRIGHTNESS");
                     OnOffDisplay(Encoder);
+                    toggleOnOff();
+                    stateUpdated(CALL_MODE_BUTTON);
+                    updateInterfaces(CALL_MODE_BUTTON);
                     Encoder.MODI = BRIGHTNESS_MODI;
                     Encoder.rotationDelay = BRIGHTNESS_ROTATION_DELAY;
                     pcnt_counter_resume(Encoder.unit);
+
                     break;
                 case BRIGHTNESS_MODI:
                     Serial.println("was BRIGHTNESS - now EFFECT");
@@ -294,6 +313,10 @@ private:
                     break;
             }
         } else if (Encoder.eventButton == LONG_PRESS) {
+            Serial.println("LONG PRESS - Toggling OFF");
+            toggleOnOff();
+            stateUpdated(CALL_MODE_BUTTON);
+            updateInterfaces(CALL_MODE_BUTTON);
             Encoder.MODI = TOGGLED_OFF;
             OnOffDisplay(Encoder);
             pcnt_counter_pause(Encoder.unit);
@@ -351,6 +374,11 @@ private:
         if (newDuty > 255) newDuty = 255;
 
         Encoder.brightness = newDuty;
+
+        //strip.setBrightness(Encoder.brightness, false);
+        bri = Encoder.brightness;
+        stateUpdated(CALL_MODE_BUTTON);
+        updateInterfaces(CALL_MODE_BUTTON);
     }
 
     void OnOffDisplay(RotaryEncoder& Encoder) {
