@@ -5,13 +5,13 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
-//#define Serial Serial0
+#define Serial Serial0
 
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 #define OLED_RESET -1
-#define MY_SDA_PIN 17
-#define MY_SCL_PIN 18
+#define MY_SDA_PIN 21
+#define MY_SCL_PIN 22
 
 /**
  * Rotary Encoder Specifications
@@ -19,7 +19,6 @@
 #define PCNT_LIMIT_HIGH 21
 #define PCNT_LIMIT_LOW -21
 #define ROTARY_ENCODER_DETENTS 30
-
 
 
 const int MAX_ENCODERS = 4;
@@ -39,10 +38,12 @@ volatile unsigned long lastUpdate = 0;
 
 static const char _name[] PROGMEM = "Multiple Rotary Encoder";
 static const char _enabled[] PROGMEM = "Enabled";
-static const char _pinCLK[] PROGMEM = "Pin_CLK";
-static const char _pinDT[] PROGMEM = "Pin_DT";
-static const char _pinSW[] PROGMEM = "Pin_SW";
-static const char _segID[] PROGMEM = "Segment_ID";
+static const char _pinCLK[] PROGMEM = "Pin CLK";
+static const char _pinDT[] PROGMEM = "Pin DT";
+static const char _pinSW[] PROGMEM = "Pin SW";
+static const char _segID[] PROGMEM = "Segment ID";
+static const char _longShortPressThreshold[] PROGMEM = "Long Press Threshold";
+static const char _doublePressThreshold[] PROGMEM = "Double Press Threshold";
 
 /**
  * Click Modi
@@ -59,7 +60,8 @@ enum Rotary_Encoder_MODI {
 enum ButtonEventType {
     NONE,
     SHORT_PRESS,
-    LONG_PRESS
+    DOUBLE_PRESS,
+    LONG_PRESS,
 };
 
 /**
@@ -79,18 +81,20 @@ struct RotaryEncoder {
      * Rotation Variables
      */
     int16_t deltaValue = 0;
-    unsigned long TimeOfLastRotation = 0;
+    unsigned long timeOfLastRotation = 0;
     bool rotationPending = false;
     int rotationDelay = 0;
 
     /**
      * Click Variables
      */
-    volatile uint32_t TimeOfLastClick = 0;
+    volatile uint32_t timeOfLastClick = 0;
     volatile uint32_t lastEdge = 0;
     volatile bool buttonIsPressed = false;
     volatile bool buttonWasPressed = false;
     volatile bool buttonPressHandled = true;
+    bool waitingForDoubleClick = false;
+    u_int32_t timeOfFirstClick = 0;
 
     /**
      * Click and Rotation Execution States
@@ -157,7 +161,7 @@ void IRAM_ATTR buttonISR(void* arg) {
     
     if (!Encoder.buttonIsPressed) {
         // Button PRESSED
-        Encoder.TimeOfLastClick = now;  // Only set on initial press
+        Encoder.timeOfLastClick = now;  // Only set on initial press
         Encoder.buttonIsPressed = true;
         Encoder.buttonWasPressed = false;
         Encoder.buttonPressHandled = false;
@@ -176,6 +180,9 @@ void IRAM_ATTR buttonISR(void* arg) {
 class Multiple_Rotary_Encoder : public Usermod {
 
 private:
+
+    uint8_t longShortPressThreshold = 500;
+    uint8_t doublePressThreshold = 200;
 
     bool enabled = false;
 
@@ -202,7 +209,7 @@ private:
 
     int BRIGHTNESS_ROTATION_DELAY = 40;
     int EFFECT_ROTATION_DELAY = 150;
-    const int LongShortPressThreshold = 500;
+    const int longShortPressThreshold = 500;
     bool global_eventPending = false;
 
     // Rotary Encoders Pin Declarations (actual ESP32-S3 Pinout Numbers)
@@ -233,87 +240,116 @@ private:
         }
     }
 
-    void updateHardware() {
+    /**
+     * Hardware - Click Detection
+     */
+    void updateButton(RotaryEncoder& Encoder, int32_t timeNOW) {
+    // If a falling Edge is detected from an Interrupt, the .buttonPressHandled Flag is set "false"
+        if ( !Encoder.buttonPressHandled ) {
 
-        for (int i = 0; i < NUM_ENCODERS; i++) {
 
-            /**
-             * Hardware - Click Detection
-             */
 
-            // Referencing Encoder to Encoder[i] Pointer in the for Scope
-            RotaryEncoder& Encoder = Encoders[i];
+            int32_t timeDifference = timeNOW - Encoder.timeOfLastClick;
 
-            // If a falling Edge is detected from an Interrupt, the .buttonPressHandled Flag is set "false"
-            if ( !Encoder.buttonPressHandled ) {
+            //Serial.printf("timeNow: %d timeOfLastClick %d timeDifference: %d timeNow", timeNOW ,Encoder.timeOfLastClick, timeDifference );
+            //Serial.printf("DEBUG: pressed=%d, wasPressed=%d, timeDiff=%ld, threshold=%d\n", 
+            //Encoder.buttonIsPressed, Encoder.buttonWasPressed, timeDifference, longShortPressThreshold);
 
-                int32_t timeNOW = xTaskGetTickCount() * portTICK_PERIOD_MS; 
-                int32_t timeDifference = timeNOW - Encoder.TimeOfLastClick;
-                Serial.printf("timeNow: %d TimeOfLastClick %d timeDifference: %d timeNow", timeNOW ,Encoder.TimeOfLastClick, timeDifference );
-                Serial.printf("DEBUG: pressed=%d, wasPressed=%d, timeDiff=%ld, threshold=%d\n", 
-                Encoder.buttonIsPressed, Encoder.buttonWasPressed, timeDifference, LongShortPressThreshold);
+            // Long Press Detection when Button is Held
+            if( Encoder.buttonIsPressed) {
+                
 
-                // Long Press Detection when Button is Held
-                if( Encoder.buttonIsPressed) {
-                    
+                // If Pressed Longer or Equal to (const int longShortPressThreshold) -> Long Press
+                if( timeDifference >= longShortPressThreshold ) {
+                    Serial.println("LONG PRESS HOLD");
+                    Encoder.eventButton = LONG_PRESS;
+                    global_eventPending = true;
 
-                    // If Pressed Longer or Equal to (const int LongShortPressThreshold) -> Long Press
-                    if( timeDifference >= LongShortPressThreshold ) {
-                        Serial.println("LONG PRESS HOLD");
-                        Encoder.eventButton = LONG_PRESS;
-                        global_eventPending = true;
-
-                        // Reset .buttonPressHandled to "true", so no more execution until next button press
-                        Encoder.buttonPressHandled = true;
-
-                    };
-                };
-
-                // Long and Short Press Detection when Button is Released
-                if( Encoder.buttonWasPressed) {
-
-                    // If Pressed Shorter than (const int LongShortPressThreshold) -> Short Press
-                    if( timeDifference < LongShortPressThreshold ) {
-                        Serial.println("SHORT PRESS");
-                        Encoder.eventButton = SHORT_PRESS;
-                        global_eventPending = true;
-
-                        // Reset .buttonPressHandled to "true", so no more execution until next button press
-                        Encoder.buttonPressHandled = true;
-
-                    // If Pressed Longer or Equal to (const int LongShortPressThreshold) -> Long Press
-                    // Actual Edge Case - When CPU takes longer than 500ms to check the Button Press
-                    } else {
-                        Serial.println("LONG PRESS RELEASE");
-                        Encoder.eventButton = LONG_PRESS;
-                        global_eventPending = true;
-
-                        //      Reset .buttonPressHandled to "true", so no more execution until next button press
-                        Encoder.buttonPressHandled = true;
-                    };
+                    // Reset .buttonPressHandled to "true", so no more execution until next button press
+                    Encoder.buttonPressHandled = true;
 
                 };
             };
 
-            // Rest stays the same...
-            int16_t ValueNOW;
-            pcnt_get_counter_value(Encoder.unit, &ValueNOW);
+            // Long and Short Press Detection when Button is Released
+            if( Encoder.buttonWasPressed) {
 
+                // If Pressed Shorter than (const int longShortPressThreshold) -> Short Press
+                if( timeDifference < longShortPressThreshold ) {
+
+                    if(Encoder.waitingForDoubleClick && (timeNOW - Encoder.timeOfFirstClick <= doublePressThreshold)) {
+                        // YEAH! DoubleClick!
+                        Encoder.eventButton = DOUBLE_PRESS;
+                        Encoder.waitingForDoubleClick = false;
+                        Encoder.buttonPressHandled = true;
+                        Serial.println("double press!");
+                        return;
+                    } 
+                    if(!Encoder.waitingForDoubleClick) {
+                        Encoder.waitingForDoubleClick = true;
+                        Encoder.timeOfFirstClick = timeNOW;
+                        Encoder.buttonPressHandled = true;
+                    }
+
+                // If Pressed Longer or Equal to (const int longShortPressThreshold) -> Long Press
+                // Actual Edge Case - When CPU takes longer than 500ms to check the Button Press
+                } else {
+                    Serial.println("LONG PRESS RELEASE");
+                    Encoder.eventButton = LONG_PRESS;
+                    global_eventPending = true;
+
+                    //      Reset .buttonPressHandled to "true", so no more execution until next button press
+                    Encoder.buttonPressHandled = true;
+                };
+
+            };
+        };
+        if(Encoder.waitingForDoubleClick && (timeNOW - Encoder.timeOfFirstClick > doublePressThreshold)) {
+            Serial.println("SHORT PRESS");
+            Encoder.eventButton = SHORT_PRESS;
+            global_eventPending = true;
+
+            // Reset .buttonPressHandled to "true", so no more execution until next button press
+            Encoder.buttonPressHandled = true;
+            Encoder.waitingForDoubleClick = false; 
+        }
+
+    }
+
+    /**
+     * Hardware - Rotation Detection
+     */
+    void updatePCNT_Unit(RotaryEncoder& Encoder, int i) {
+        int16_t ValueNOW;
+        pcnt_get_counter_value(Encoder.unit, &ValueNOW);
+
+        if (ValueNOW) {
+            pcnt_counter_clear(Encoder.unit);
+            Encoder.deltaValue += ValueNOW;
+            Encoder.rotationPending = true;
+            Encoder.timeOfLastRotation = xTaskGetTickCount() * portTICK_PERIOD_MS;
+            Serial.printf("Encoder %d has a NEW Value: %d .Time of last Rotation: %d \r\n", i, ValueNOW, Encoder.timeOfLastRotation);
+        }
+
+        if (Encoder.rotationPending && (xTaskGetTickCount() * portTICK_PERIOD_MS) - Encoder.timeOfLastRotation >= Encoder.rotationDelay) {
+            Encoder.rotationPending = false;
+            Encoder.eventRotation = true;
+            global_eventPending = true;
+            Serial.printf("Encoder %d has a CONFIRMED Delta: %d \r\n", i, Encoder.deltaValue);
+        }
+    }
+
+    void updateHardware() {
+
+        for (int i = 0; i < NUM_ENCODERS; i++) {
+
+            // Referencing Encoder to Encoder[i] Pointer in the for Scope
+            RotaryEncoder& Encoder = Encoders[i];
+            int32_t timeNOW = xTaskGetTickCount() * portTICK_PERIOD_MS;
             
-            if (ValueNOW) {
-                pcnt_counter_clear(Encoder.unit);
-                Encoder.deltaValue += ValueNOW;
-                Encoder.rotationPending = true;
-                Encoder.TimeOfLastRotation = xTaskGetTickCount() * portTICK_PERIOD_MS;
-                Serial.printf("Encoder %d has a NEW Value: %d .Time of last Rotation: %d \r\n", i, ValueNOW, Encoder.TimeOfLastRotation);
-            }
+            updateButton(Encoder, timeNOW);
 
-            if (Encoder.rotationPending && (xTaskGetTickCount() * portTICK_PERIOD_MS) - Encoder.TimeOfLastRotation >= Encoder.rotationDelay) {
-                Encoder.rotationPending = false;
-                Encoder.eventRotation = true;
-                global_eventPending = true;
-                Serial.printf("Encoder %d has a CONFIRMED Delta: %d \r\n", i, Encoder.deltaValue);
-            }
+            updatePCNT_Unit(Encoder, i);
         }
     }
 
@@ -469,7 +505,9 @@ public:
     void addToConfig(JsonObject& root) override {
         JsonObject top = root.createNestedObject(FPSTR(_name));
         top[FPSTR(_enabled)] = enabled;
-        
+        top[FPSTR(_longShortPressThreshold)]  = (int8_t)longShortPressThreshold;
+        top[FPSTR(_doublePressThreshold)]  = (int8_t)doublePressThreshold;      
+
         top["Anzahl Encoder"] = NUM_ENCODERS;
 
         
@@ -483,9 +521,6 @@ public:
             encoderObj[FPSTR(_pinCLK)] = (int8_t)Encoder.pin_clk;
             encoderObj[FPSTR(_pinDT)]  = (int8_t)Encoder.pin_dt;
             encoderObj[FPSTR(_pinSW)]  = (int8_t)Encoder.pin_sw;
-            encoderObj[FPSTR(_pinCLK)] = (int8_t)Encoder.pin_clk;
-            encoderObj[FPSTR(_pinDT)]  = (int8_t)Encoder.pin_dt;
-            encoderObj[FPSTR(_pinSW)]  = (int8_t)Encoder.pin_sw;
             
             encoderObj[FPSTR(_segID)]  = (int8_t)Encoder.segmentID;
         }
@@ -496,6 +531,8 @@ public:
         if (top.isNull()) return false;
 
         getJsonValue(top[FPSTR(_enabled)], enabled);
+        getJsonValue(top[FPSTR(_longShortPressThreshold)], longShortPressThreshold);
+        getJsonValue(top[FPSTR(_doublePressThreshold)], doublePressThreshold);
 
         int8_t newCount = NUM_ENCODERS;
         getJsonValue(top["Anzahl Encoder"], newCount);
@@ -510,7 +547,7 @@ public:
                 int8_t pCLK = Encoder.pin_clk;
                 int8_t pDT  = Encoder.pin_dt;
                 int8_t pSW  = Encoder.pin_sw;
-                int8_t sID  = Encoder.segmentID; // <-- NEU: Alter Wert
+                int8_t sID  = Encoder.segmentID;
 
                 getJsonValue(encoderObj[FPSTR(_pinCLK)], pCLK);
                 getJsonValue(encoderObj[FPSTR(_pinDT)], pDT);
