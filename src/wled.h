@@ -15,6 +15,60 @@
 
 // --- WLED Mock Klassen ---
 
+
+// --- WLED PinManager Mock ---
+
+// 1. Das Enum für die Besitzer nachbauen
+namespace PinOwner {
+    enum Type {
+        None = 0,
+        UM_Unspecified = 252
+    };
+}
+
+// 2. Die PinManager Klasse simulieren
+class PinManagerClass {
+private:
+    // Der ESP32 hat 40 mögliche GPIOs. Wir merken uns hier, ob einer belegt ist.
+    bool allocatedPins[40] = {false}; 
+
+public:
+    // Mock für das Reservieren
+    bool allocatePin(int pin, bool output, int owner) {
+        if (pin < 0 || pin >= 40) return true; // -1 (deaktivierte Pins) einfach durchwinken
+        
+        if (allocatedPins[pin]) {
+            Serial.printf("[Mock PinManager] FEHLER: Pin %d ist bereits blockiert!\n", pin);
+            return false;
+        }
+        
+        allocatedPins[pin] = true;
+        Serial.printf("[Mock PinManager] SUCCESS: Pin %d erfolgreich reserviert.\n", pin);
+        return true;
+    }
+
+    // Mock für das Freigeben
+    void deallocatePin(int pin, int owner) {
+        if (pin >= 0 && pin < 40) {
+            allocatedPins[pin] = false;
+            Serial.printf("[Mock PinManager] INFO: Pin %d wurde wieder freigegeben.\n", pin);
+        }
+    }
+
+    // --- EIGENE HILFSFUNKTION FÜR DEINE TESTS ---
+    // (Diese Funktion gibt es im echten WLED nicht. Du kannst sie in deiner 
+    // main.cpp aufrufen, um künstlich einen Konflikt zu erzeugen!)
+    void mockBlockPinForTest(int pin) {
+        if (pin >= 0 && pin < 40) {
+            allocatedPins[pin] = true;
+            Serial.printf("[Mock Setup] Pin %d künstlich für Testzwecke blockiert.\n", pin);
+        }
+    }
+};
+
+// 3. WLED nutzt eine globale Instanz namens "pinManager"
+extern PinManagerClass pinManager;
+
 // Simuliert ein WLED Segment
 struct Segment {
     uint8_t opacity = 255;
