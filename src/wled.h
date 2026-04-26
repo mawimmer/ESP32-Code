@@ -18,9 +18,14 @@
 // Simuliert ein WLED Segment
 struct Segment {
     uint8_t opacity = 255;
+    uint8_t mode = 0;
     
     void setOption(uint8_t option, bool value) {
         Serial.printf("[Mock] Segment Option %d gesetzt auf %s\n", option, value ? "true" : "false");
+    }
+    void setMode(uint8_t newMode) {
+        mode = newMode;
+        Serial.printf("[Mock] Segment Mode gesetzt auf %d\n", mode);
     }
 };
 
@@ -61,4 +66,5 @@ public:
     virtual void loop() {}
     virtual void addToConfig(JsonObject& root) {}
     virtual bool readFromConfig(JsonObject& root) { return true; }
+    virtual void onStateChange(uint8_t mode) {}
 };
