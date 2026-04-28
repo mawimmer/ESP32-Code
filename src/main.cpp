@@ -1,7 +1,7 @@
 #include <Arduino.h>
 
 #include "wled.h"
-#include "Multiple_Rotary_Encoder.h"
+#include "multiple_rotary_encoder.h"
 
 Strip strip;
 PinManagerClass pinManager;
@@ -12,17 +12,17 @@ void setup() {
     delay(1000);
     Serial.println("\n--- Starte WLED Usermod Mock ---");
 
-    multiple_rotary_encoder.setup();
+    encoder_manager.setup();
 
 
-    multiple_rotary_encoder.enable(true);
+    encoder_manager.enable(true);
     Serial.println("[Mock] Usermod wurde manuell aktiviert.");
 
 }
 
 void loop() {
     
-    multiple_rotary_encoder.loop();
+    encoder_manager.loop();
 
     vTaskDelay(pdMS_TO_TICKS(10));
 }
