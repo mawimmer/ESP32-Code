@@ -1,5 +1,5 @@
 [wokwi]
 version = 1
-firmware = ".pio/build/arduino_nano_esp32/firmware.bin"
-elf = ".pio/build/arduino_nano_esp32/firmware.elf"
+firmware = ".pio/build/WOKWI_SIM/firmware.bin"
+elf = ".pio/build/WOKWI_SIM/firmware.elf"
 gdbServerPort = 3333

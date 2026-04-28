@@ -1,8 +1,10 @@
 #include <rotaryEncoder.h>
-#include <wled.h>
+#include <Multiple_Rotary_Encoder.h>
+#include <wled_mock/wled.h>
 
-#define Serial Serial0
-
+#ifdef WOKWI_SIM
+    #define Serial Serial0
+#endif
 
 /**
  * Hardware Interrupt Function
@@ -42,12 +44,12 @@ void rotaryEncoder::RotationEventHandler() {
 
     switch (MODI) {
         case Rotary_Encoder_MODI::BRIGHTNESS_MODI:
-            //Brightness_Push();
-            //updateDisplay();
+            Brightness_Push();
+            encoder_manager.updateDisplay(*this);
             break;
         case Rotary_Encoder_MODI::EFFECT_MODI:
             effect += deltaValue;
-            //updateDisplay();
+            encoder_manager.updateDisplay(*this);
             break;
         case Rotary_Encoder_MODI::TOGGLED_OFF:
             break;
@@ -60,6 +62,7 @@ void rotaryEncoder::ButtonEventHandler() {
     if (eventButton == ButtonEventType::SHORT_PRESS) {
         switch (MODI) {
             case Rotary_Encoder_MODI::TOGGLED_OFF: {
+                encoder_manager.OnOffDisplay(*this);
                 Serial.println("was TOGGLED OFF - now BRIGHTNESS");
                 //OnOffDisplay();
 
@@ -92,7 +95,7 @@ void rotaryEncoder::ButtonEventHandler() {
         stateUpdated(CALL_MODE_BUTTON);
         updateInterfaces(CALL_MODE_BUTTON);
         MODI = Rotary_Encoder_MODI::TOGGLED_OFF;
-        //OnOffDisplay();
+        encoder_manager.OnOffDisplay(*this);
         pcnt_counter_pause(unit);
     }
     eventButton = ButtonEventType::NONE;
@@ -134,6 +137,7 @@ void rotaryEncoder::updatePCNT_Unit(int i) {
         rotationPending = false;
         eventRotation = true;
         stateChanged = true;
+        encoder_manager.global_eventPending = true;
         Serial.printf("Encoder %d has a CONFIRMED Delta: %d \r\n", i, deltaValue);
     }
 }
@@ -159,6 +163,7 @@ void rotaryEncoder::updateButton(int32_t timeNOW) {
                 Serial.println("LONG PRESS HOLD");
                 eventButton = ButtonEventType::LONG_PRESS;
                 stateChanged = true;
+                encoder_manager.global_eventPending = true;
 
                 // Reset .buttonPressHandled to "true", so no more execution until next button press
                 buttonPressHandled = true;
@@ -178,6 +183,7 @@ void rotaryEncoder::updateButton(int32_t timeNOW) {
                     waitingForDoubleClick = false;
                     buttonPressHandled = true;
                     Serial.println("double press!");
+                    encoder_manager.global_eventPending = true;
                     return;
                 } 
                 if(!waitingForDoubleClick) {
@@ -191,6 +197,7 @@ void rotaryEncoder::updateButton(int32_t timeNOW) {
             } else {
                 Serial.println("LONG PRESS RELEASE");
                 eventButton = ButtonEventType::LONG_PRESS;
+                encoder_manager.global_eventPending = true;
                 stateChanged = true;
 
                 //      Reset .buttonPressHandled to "true", so no more execution until next button press
@@ -202,6 +209,7 @@ void rotaryEncoder::updateButton(int32_t timeNOW) {
     if(waitingForDoubleClick && (timeNOW - timeOfFirstClick > doublePressThreshold)) {
         Serial.println("SHORT PRESS");
         eventButton = ButtonEventType::SHORT_PRESS;
+        encoder_manager.global_eventPending = true;
         stateChanged = true;
 
         // Reset .buttonPressHandled to "true", so no more execution until next button press

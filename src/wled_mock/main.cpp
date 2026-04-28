@@ -12,6 +12,8 @@ void setup() {
     delay(1000);
     Serial.println("\n--- Starte WLED Usermod Mock ---");
 
+    encoder_manager.initOLED();
+
     encoder_manager.setup();
 
 

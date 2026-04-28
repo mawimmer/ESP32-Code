@@ -1,4 +1,4 @@
-#include <wled.h>
+#include <wled_mock/wled.h>
 #include <Arduino.h>
 #include <driver/pcnt.h>
 #include <Wire.h>
@@ -6,13 +6,21 @@
 #include <Adafruit_SSD1306.h>
 #include <rotaryEncoder.h>
 
-#define Serial Serial0
+
 
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 #define OLED_RESET -1
-//#define MY_SDA_PIN 17
-//#define MY_SCL_PIN 18
+
+
+#ifdef WOKWI_SIM
+  #define Serial Serial0
+  #define DEFAULT_SDA 21
+  #define DEFAULT_SCL 22
+#else
+  #define DEFAULT_SDA 17
+  #define DEFAULT_SCL 18
+#endif
 
 /**
  * Rotary Encoder Specifications
@@ -59,16 +67,14 @@ class multiple_rotary_encoder : public Usermod {
 
 private:
 
-    int displayPinSDA = 17;
-    int displayPinSCL = 18;
+    int displayPinSDA = DEFAULT_SDA;
+    int displayPinSCL = DEFAULT_SCL;
 
     int longShortPressThreshold = 500;
     int doublePressThreshold = 200;
     bool enabled = false;
 
     Adafruit_SSD1306 OLED_Display{SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET};
-
-    void initOLED();
 
 
     // Rotary Encoders Pin Declarations (actual ESP32-S3 Pinout Numbers)
@@ -97,12 +103,6 @@ private:
 
 
 
-
-    void updateDisplay(rotaryEncoder& Encoder);
-
-
-    void OnOffDisplay(rotaryEncoder& Encoder);
-
 public:
 
     int BRIGHTNESS_ROTATION_DELAY = 40;
@@ -110,6 +110,12 @@ public:
 
     //const int longShortPressThreshold = 500;
     bool global_eventPending = false;
+
+    void initOLED();
+
+    void updateDisplay(rotaryEncoder& Encoder);
+
+    void OnOffDisplay(rotaryEncoder& Encoder);
 
     inline void enable(bool e) { enabled = e; }
 

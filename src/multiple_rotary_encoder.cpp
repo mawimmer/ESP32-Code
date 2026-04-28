@@ -1,4 +1,4 @@
-#include <wled.h>
+#include <wled_mock/wled.h>
 #include <Arduino.h>
 #include <driver/pcnt.h>
 #include <Wire.h>
