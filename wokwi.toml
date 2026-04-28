@@ -2,3 +2,4 @@
 version = 1
 firmware = ".pio/build/arduino_nano_esp32/firmware.bin"
 elf = ".pio/build/arduino_nano_esp32/firmware.elf"
+gdbServerPort = 3333
