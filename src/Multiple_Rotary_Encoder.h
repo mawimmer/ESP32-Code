@@ -1,4 +1,3 @@
-#include <wled_mock/wled.h>
 #include <Arduino.h>
 #include <driver/pcnt.h>
 #include <Wire.h>
@@ -6,21 +5,24 @@
 #include <Adafruit_SSD1306.h>
 #include <rotaryEncoder.h>
 
+#ifdef WOKWI_SIM
+  #define Serial Serial0
+  #define DEFAULT_SDA 21
+  #define DEFAULT_SCL 22
+  #include <wled_bridge.h>
+  #include <wled_mock/wled.h>
+#else
+  #include <wled.h>
+  #define DEFAULT_SDA 17
+  #define DEFAULT_SCL 18
+#endif
+
 
 
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 #define OLED_RESET -1
 
-
-#ifdef WOKWI_SIM
-  #define Serial Serial0
-  #define DEFAULT_SDA 21
-  #define DEFAULT_SCL 22
-#else
-  #define DEFAULT_SDA 17
-  #define DEFAULT_SCL 18
-#endif
 
 /**
  * Rotary Encoder Specifications
@@ -63,7 +65,7 @@ inline void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt);
 
 
 
-class multiple_rotary_encoder : public Usermod {
+class multi_rotary_encoder : public Usermod {
 
 private:
 
@@ -131,4 +133,4 @@ public:
 
 };
 
-extern multiple_rotary_encoder encoder_manager;
+extern multi_rotary_encoder encoder_manager;

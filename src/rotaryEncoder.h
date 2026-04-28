@@ -2,6 +2,10 @@
 #include <Arduino.h>
 #include <driver/pcnt.h>
 
+#ifdef WOKWI_SIM
+    #define Serial Serial0
+#endif
+
 void IRAM_ATTR buttonISR(void* arg);
 
 class rotaryEncoder {
@@ -15,9 +19,11 @@ class rotaryEncoder {
     gpio_num_t pin_clk;
     gpio_num_t pin_dt;
     gpio_num_t pin_sw;
-    int brightness = 0;
-    int effect = 0;
+    int8_t brightness = 0;
+    int8_t effect = 0;
     int8_t segmentID;
+
+    int pulsesPerDetent = 2;
 
     int rotationDelay = 0;
 
@@ -42,7 +48,7 @@ class rotaryEncoder {
         /**
      * Click and Rotation Execution States
      */
-    ButtonEventType eventButton = ButtonEventType::NONE; // Hier den neuen Enum-Namen verwendet
+    ButtonEventType eventButton = ButtonEventType::NONE;
 
     bool eventRotation = false;
 
@@ -98,9 +104,11 @@ class rotaryEncoder {
 
         void Brightness_Push();
 
+        void Effect_Push();
+
         void updatePCNT_Unit(int i);
 
-        void updateButton(int32_t timeNOW);
+        void updateButtonState(int32_t timeNOW);
 
 
 };

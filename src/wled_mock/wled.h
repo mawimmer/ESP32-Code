@@ -1,24 +1,25 @@
 #pragma once
-
 #include <Arduino.h>
-#include <ArduinoJson.h> // Wichtig für JsonObject, JsonVariant etc.
+#include <ArduinoJson.h>
 
-// --- WLED Makros & Konstanten ---
+#ifdef WOKWI_SIM
+    #define Serial Serial0
+#endif
+
+
 #define CALL_MODE_BUTTON 1
 #define SEG_OPTION_ON 0
 #ifndef FPSTR
 #define FPSTR(pstr_pointer) (reinterpret_cast<const __FlashStringHelper *>(pstr_pointer))
 #endif
 
-// Makro abfangen, das WLED normalerweise nutzt, um den Usermod zu registrieren
+
 #define REGISTER_USERMOD(name) 
 
-// --- WLED Mock Klassen ---
 
 
-// --- WLED PinManager Mock ---
 
-// 1. Das Enum für die Besitzer nachbauen
+
 namespace PinOwner {
     enum Type {
         None = 0,
@@ -26,16 +27,16 @@ namespace PinOwner {
     };
 }
 
-// 2. Die PinManager Klasse simulieren
+
 class PinManagerClass {
 private:
-    // Der ESP32 hat 40 mögliche GPIOs. Wir merken uns hier, ob einer belegt ist.
+
     bool allocatedPins[40] = {false}; 
 
 public:
-    // Mock für das Reservieren
+
     bool allocatePin(int pin, bool output, int owner) {
-        if (pin < 0 || pin >= 40) return true; // -1 (deaktivierte Pins) einfach durchwinken
+        if (pin < 0 || pin >= 40) return true;
         
         if (allocatedPins[pin]) {
             Serial.printf("[Mock PinManager] FEHLER: Pin %d ist bereits blockiert!\n", pin);
@@ -47,7 +48,7 @@ public:
         return true;
     }
 
-    // Mock für das Freigeben
+
     void deallocatePin(int pin, int owner) {
         if (pin >= 0 && pin < 40) {
             allocatedPins[pin] = false;
@@ -55,9 +56,7 @@ public:
         }
     }
 
-    // --- EIGENE HILFSFUNKTION FÜR DEINE TESTS ---
-    // (Diese Funktion gibt es im echten WLED nicht. Du kannst sie in deiner 
-    // main.cpp aufrufen, um künstlich einen Konflikt zu erzeugen!)
+
     void mockBlockPinForTest(int pin) {
         if (pin >= 0 && pin < 40) {
             allocatedPins[pin] = true;
@@ -66,24 +65,38 @@ public:
     }
 };
 
-// 3. WLED nutzt eine globale Instanz namens "pinManager"
+
 extern PinManagerClass pinManager;
 
-// Simuliert ein WLED Segment
+
 struct Segment {
     uint8_t opacity = 255;
     uint8_t mode = 0;
+
+    bool isOn = true; 
     
     void setOption(uint8_t option, bool value) {
-        Serial.printf("[Mock] Segment Option %d gesetzt auf %s\n", option, value ? "true" : "false");
+            if (option == SEG_OPTION_ON) {
+                isOn = value;
+            }
+            Serial.printf("[Mock] Segment Option %d gesetzt auf %s\n", option, value ? "true" : "false");
     }
+
+
+    bool getOption(uint8_t option) {
+        if (option == SEG_OPTION_ON) {
+            return isOn;
+        }
+        return false;
+    }
+
     void setMode(uint8_t newMode) {
         mode = newMode;
         Serial.printf("[Mock] Segment Mode gesetzt auf %d\n", mode);
     }
 };
 
-// Simuliert das WLED LED-Strip Objekt
+
 class Strip {
 private:
     Segment dummySegment;
@@ -94,8 +107,8 @@ public:
     }
 };
 
-// --- Globale WLED Variablen und Funktionen ---
-extern Strip strip; // Deklaration (Definition passiert in der main.cpp)
+
+extern Strip strip;
 
 inline void stateUpdated(uint8_t callMode) {
     Serial.printf("[Mock] stateUpdated(callMode=%d)\n", callMode);
@@ -105,7 +118,7 @@ inline void updateInterfaces(uint8_t callMode) {
     Serial.printf("[Mock] updateInterfaces(callMode=%d)\n", callMode);
 }
 
-// Simuliert die JSON Helfer-Funktion von WLED
+
 template <typename T>
 void getJsonValue(const JsonVariant& value, T& target) {
     if (!value.isNull()) {
@@ -113,7 +126,7 @@ void getJsonValue(const JsonVariant& value, T& target) {
     }
 }
 
-// Simuliert die WLED Usermod Basisklasse
+
 class Usermod {
 public:
     virtual void setup() {}

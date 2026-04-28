@@ -1,9 +1,13 @@
 #include <rotaryEncoder.h>
 #include <Multiple_Rotary_Encoder.h>
-#include <wled_mock/wled.h>
+
 
 #ifdef WOKWI_SIM
     #define Serial Serial0
+    #include <wled_bridge.h>
+    #include <wled_mock/wled.h>
+#else
+    #include <wled.h>
 #endif
 
 /**
@@ -47,14 +51,18 @@ void rotaryEncoder::RotationEventHandler() {
             Brightness_Push();
             encoder_manager.updateDisplay(*this);
             break;
+
         case Rotary_Encoder_MODI::EFFECT_MODI:
-            effect += deltaValue;
+            Effect_Push();
             encoder_manager.updateDisplay(*this);
             break;
+
         case Rotary_Encoder_MODI::TOGGLED_OFF:
             break;
+
     }
     deltaValue = 0;
+
 }
 
 void rotaryEncoder::ButtonEventHandler() {
@@ -64,7 +72,6 @@ void rotaryEncoder::ButtonEventHandler() {
             case Rotary_Encoder_MODI::TOGGLED_OFF: {
                 encoder_manager.OnOffDisplay(*this);
                 Serial.println("was TOGGLED OFF - now BRIGHTNESS");
-                //OnOffDisplay();
 
                 Segment& seg = strip.getSegment(segmentID);
                 seg.setOption(SEG_OPTION_ON, true);
@@ -88,6 +95,7 @@ void rotaryEncoder::ButtonEventHandler() {
                 rotationDelay = BRIGHTNESS_ROTATION_DELAY;
                 break;
         }
+        
     } else if (eventButton == ButtonEventType::LONG_PRESS && MODI != Rotary_Encoder_MODI::TOGGLED_OFF) {
         Serial.println("LONG PRESS - Toggling OFF");
         Segment& seg = strip.getSegment(segmentID);
@@ -99,9 +107,10 @@ void rotaryEncoder::ButtonEventHandler() {
         pcnt_counter_pause(unit);
     }
     eventButton = ButtonEventType::NONE;
-    }
 
-    void rotaryEncoder::Brightness_Push() {
+}
+
+void rotaryEncoder::Brightness_Push() {
     Serial.println("Brightness_Push");
     float norm = (float)brightness / 255.0f;
     float factor = 0.1f + 1.5f * norm * norm;
@@ -115,10 +124,25 @@ void rotaryEncoder::ButtonEventHandler() {
     brightness = newDuty;
 
     //strip.setBrightness(brightness, false);
-    Segment& seg = strip.getSegment(segmentID);
-    seg.opacity = brightness;
-    stateUpdated(CALL_MODE_BUTTON);
-    updateInterfaces(CALL_MODE_BUTTON);
+
+    WLED_Bridge::setSegmentBrightness(segmentID, brightness);
+
+}
+
+void rotaryEncoder::Effect_Push() {
+    Serial.println("Effect_Push");
+
+    int32_t newEffect = effect + (deltaValue / pulsesPerDetent);
+
+    if (newEffect < 1) newEffect = 1;
+    if (newEffect > 255) newEffect = 255;
+
+    effect = newEffect;
+
+    //strip.setBrightness(brightness, false);
+
+    WLED_Bridge::setSegmentEffect(segmentID, effect);
+    
 }
 
 void rotaryEncoder::updatePCNT_Unit(int i) {
@@ -142,7 +166,7 @@ void rotaryEncoder::updatePCNT_Unit(int i) {
     }
 }
 
-void rotaryEncoder::updateButton(int32_t timeNOW) {
+void rotaryEncoder::updateButtonState(int32_t timeNOW) {
 // If a falling Edge is detected from an Interrupt, the .buttonPressHandled Flag is set "false"
     if ( !buttonPressHandled ) {
 

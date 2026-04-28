@@ -1,7 +1,12 @@
 #include <Arduino.h>
+#include <multiple_rotary_encoder.h>
 
-#include "wled.h"
-#include "multiple_rotary_encoder.h"
+#ifdef WOKWI_SIM
+    #define Serial Serial0
+    #include <wled_mock/wled.h>
+#else
+    #include <wled.h>
+#endif
 
 Strip strip;
 PinManagerClass pinManager;
@@ -10,7 +15,8 @@ void setup() {
     
     Serial.begin(115200);
     delay(1000);
-    Serial.println("\n--- Starte WLED Usermod Mock ---");
+
+    Serial.println("\n--- Start WLED Usermod Mock ---");
 
     encoder_manager.initOLED();
 
@@ -18,7 +24,7 @@ void setup() {
 
 
     encoder_manager.enable(true);
-    Serial.println("[Mock] Usermod wurde manuell aktiviert.");
+    Serial.println("[Mock] Usermod active.");
 
 }
 
@@ -26,5 +32,7 @@ void loop() {
     
     encoder_manager.loop();
 
+#ifdef WOKWI_SIM
     vTaskDelay(pdMS_TO_TICKS(10));
+#endif
 }

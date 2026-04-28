@@ -1,4 +1,3 @@
-#include <wled_mock/wled.h>
 #include <Arduino.h>
 #include <driver/pcnt.h>
 #include <Wire.h>
@@ -6,6 +5,14 @@
 #include <Adafruit_SSD1306.h>
 #include <rotaryEncoder.h>
 #include <multiple_rotary_encoder.h>
+
+#ifdef WOKWI_SIM
+    #define Serial Serial0
+    #include <wled_bridge.h>
+    #include <wled_mock/wled.h>
+#else
+    #include <wled.h>
+#endif
 
 int NUM_ENCODERS = 1;
 bool standalone = false;
@@ -42,7 +49,7 @@ inline void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt) {
 
     Adafruit_SSD1306 OLED_Display{SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET};
 
-    void multiple_rotary_encoder::initOLED() {
+    void multi_rotary_encoder::initOLED() {
 
         Wire.begin(displayPinSDA, displayPinSCL);
 
@@ -61,7 +68,7 @@ inline void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt) {
     }
 
 
-    void multiple_rotary_encoder::init_PCNT_UNITS() {
+    void multi_rotary_encoder::init_PCNT_UNITS() {
         for (int i = 0; i < NUM_ENCODERS; i++) {
             rotaryEncoder& Encoder = Encoders[i];
 
@@ -82,7 +89,7 @@ inline void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt) {
     }
 
 
-    void multiple_rotary_encoder::updateHardware() {
+    void multi_rotary_encoder::updateHardware() {
 
         for (int i = 0; i < NUM_ENCODERS; i++) {
 
@@ -90,13 +97,13 @@ inline void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt) {
             rotaryEncoder& Encoder = Encoders[i];
             int32_t timeNOW = xTaskGetTickCount() * portTICK_PERIOD_MS;
             
-            Encoder.updateButton(timeNOW);
+            Encoder.updateButtonState(timeNOW);
 
             Encoder.updatePCNT_Unit(i);
         }
     }
 
-    void multiple_rotary_encoder::global_EventHandler() {
+    void multi_rotary_encoder::global_EventHandler() {
         Serial.println("global_EventHandler");
         global_eventPending = false;
 
@@ -117,7 +124,7 @@ inline void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt) {
 
 
 
-    void multiple_rotary_encoder::updateDisplay(rotaryEncoder& Encoder) {
+    void multi_rotary_encoder::updateDisplay(rotaryEncoder& Encoder) {
 
         if( millis() - lastUpdate >= 50 ) {
             lastUpdate = millis();
@@ -137,7 +144,7 @@ inline void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt) {
 
 
 
-    void multiple_rotary_encoder::OnOffDisplay(rotaryEncoder& Encoder) {
+    void multi_rotary_encoder::OnOffDisplay(rotaryEncoder& Encoder) {
         if(displayON){
             Serial.println("Display OFF");
             displayON = false;
@@ -152,7 +159,7 @@ inline void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt) {
 
     };
 
-    void multiple_rotary_encoder::setup() {
+    void multi_rotary_encoder::setup() {
 
     for (int i = 0; i < NUM_ENCODERS; i++) {
         Encoders[i].rotationDelay = BRIGHTNESS_ROTATION_DELAY;
@@ -162,7 +169,7 @@ inline void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt) {
         init_PCNT_UNITS();
     }
 
-    void multiple_rotary_encoder::addToConfig(JsonObject& root) {
+    void multi_rotary_encoder::addToConfig(JsonObject& root) {
         JsonObject top = root.createNestedObject(FPSTR(_name));
         top[FPSTR(_enabled)] = enabled;
         top[FPSTR(_longShortPressThreshold)]  = (int)longShortPressThreshold;
@@ -179,7 +186,6 @@ inline void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt) {
             String encoderName = "Encoder " + String(i);
             JsonObject encoderObj = top.createNestedObject(encoderName);
 
-            // Wichtig: (int8_t) erzwingt eine saubere Zahl im Webinterface
             encoderObj[FPSTR(_pinCLK)] = (int8_t)Encoder.pin_clk;
             encoderObj[FPSTR(_pinDT)]  = (int8_t)Encoder.pin_dt;
             encoderObj[FPSTR(_pinSW)]  = (int8_t)Encoder.pin_sw;
@@ -188,7 +194,7 @@ inline void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt) {
         }
     }
 
-    bool multiple_rotary_encoder::readFromConfig(JsonObject& root) {
+    bool multi_rotary_encoder::readFromConfig(JsonObject& root) {
         JsonObject top = root[FPSTR(_name)];
         if (top.isNull()) return false;
 
@@ -216,18 +222,18 @@ inline void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt) {
                 getJsonValue(encoderObj[FPSTR(_pinCLK)], pCLK);
                 getJsonValue(encoderObj[FPSTR(_pinDT)], pDT);
                 getJsonValue(encoderObj[FPSTR(_pinSW)], pSW);
-                getJsonValue(encoderObj[FPSTR(_segID)], sID); // <-- NEU: Aus Web-UI lesen
+                getJsonValue(encoderObj[FPSTR(_segID)], sID);
 
                 Encoder.pin_clk = static_cast<gpio_num_t>(pCLK);
                 Encoder.pin_dt  = static_cast<gpio_num_t>(pDT);
                 Encoder.pin_sw  = static_cast<gpio_num_t>(pSW);
-                Encoder.segmentID  = sID; // <-- NEU: Neuen Wert speichern
+                Encoder.segmentID  = sID;
             }
         }
         return true;
     }
 
-    void multiple_rotary_encoder::loop() {
+    void multi_rotary_encoder::loop() {
 
         if(!enabled){
             return;
@@ -240,6 +246,7 @@ inline void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt) {
         }
     }
 
-    REGISTER_USERMOD(multiple_rotary_encoder);
+    REGISTER_USERMOD(multi_rotary_encoder);
     
-    multiple_rotary_encoder encoder_manager;
+    multi_rotary_encoder encoder_manager;
+    
