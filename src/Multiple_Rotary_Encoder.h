@@ -65,7 +65,7 @@ inline void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt);
 
 
 
-class multi_rotary_encoder : public Usermod {
+class multiple_rotary_encoder : public Usermod {
 
 private:
 
@@ -133,4 +133,5 @@ public:
 
 };
 
-extern multi_rotary_encoder encoder_manager;
+extern multiple_rotary_encoder encoder_manager;
+

@@ -49,7 +49,7 @@ inline void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt) {
 
     Adafruit_SSD1306 OLED_Display{SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET};
 
-    void multi_rotary_encoder::initOLED() {
+    void multiple_rotary_encoder::initOLED() {
 
         Wire.begin(displayPinSDA, displayPinSCL);
 
@@ -68,7 +68,7 @@ inline void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt) {
     }
 
 
-    void multi_rotary_encoder::init_PCNT_UNITS() {
+    void multiple_rotary_encoder::init_PCNT_UNITS() {
         for (int i = 0; i < NUM_ENCODERS; i++) {
             rotaryEncoder& Encoder = Encoders[i];
 
@@ -89,7 +89,7 @@ inline void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt) {
     }
 
 
-    void multi_rotary_encoder::updateHardware() {
+    void multiple_rotary_encoder::updateHardware() {
 
         for (int i = 0; i < NUM_ENCODERS; i++) {
 
@@ -103,7 +103,7 @@ inline void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt) {
         }
     }
 
-    void multi_rotary_encoder::global_EventHandler() {
+    void multiple_rotary_encoder::global_EventHandler() {
         Serial.println("global_EventHandler");
         global_eventPending = false;
 
@@ -124,7 +124,7 @@ inline void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt) {
 
 
 
-    void multi_rotary_encoder::updateDisplay(rotaryEncoder& Encoder) {
+    void multiple_rotary_encoder::updateDisplay(rotaryEncoder& Encoder) {
 
         if( millis() - lastUpdate >= 50 ) {
             lastUpdate = millis();
@@ -144,7 +144,7 @@ inline void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt) {
 
 
 
-    void multi_rotary_encoder::OnOffDisplay(rotaryEncoder& Encoder) {
+    void multiple_rotary_encoder::OnOffDisplay(rotaryEncoder& Encoder) {
         if(displayON){
             Serial.println("Display OFF");
             displayON = false;
@@ -159,7 +159,7 @@ inline void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt) {
 
     };
 
-    void multi_rotary_encoder::setup() {
+    void multiple_rotary_encoder::setup() {
 
     for (int i = 0; i < NUM_ENCODERS; i++) {
         Encoders[i].rotationDelay = BRIGHTNESS_ROTATION_DELAY;
@@ -169,7 +169,7 @@ inline void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt) {
         init_PCNT_UNITS();
     }
 
-    void multi_rotary_encoder::addToConfig(JsonObject& root) {
+    void multiple_rotary_encoder::addToConfig(JsonObject& root) {
         JsonObject top = root.createNestedObject(FPSTR(_name));
         top[FPSTR(_enabled)] = enabled;
         top[FPSTR(_longShortPressThreshold)]  = (int)longShortPressThreshold;
@@ -194,7 +194,7 @@ inline void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt) {
         }
     }
 
-    bool multi_rotary_encoder::readFromConfig(JsonObject& root) {
+    bool multiple_rotary_encoder::readFromConfig(JsonObject& root) {
         JsonObject top = root[FPSTR(_name)];
         if (top.isNull()) return false;
 
@@ -233,7 +233,7 @@ inline void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt) {
         return true;
     }
 
-    void multi_rotary_encoder::loop() {
+    void multiple_rotary_encoder::loop() {
 
         if(!enabled){
             return;
@@ -246,7 +246,6 @@ inline void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt) {
         }
     }
 
-    REGISTER_USERMOD(multi_rotary_encoder);
-    
-    multi_rotary_encoder encoder_manager;
-    
+    multiple_rotary_encoder encoder_manager;
+
+    REGISTER_USERMOD(encoder_manager);

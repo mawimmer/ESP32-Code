@@ -1,5 +1,6 @@
 #include <rotaryEncoder.h>
-#include <Multiple_Rotary_Encoder.h>
+#include <multiple_rotary_encoder.h>
+#include <wled_bridge.h>
 
 
 #ifdef WOKWI_SIM
