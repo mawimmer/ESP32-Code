@@ -56,13 +56,22 @@ inline void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt) {
         if (!OLED_Display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
             Serial.println(F("SSD1306 Fehler: Display nicht gefunden!"));
         };
+
         OLED_Display.clearDisplay();
         OLED_Display.setTextSize(1);
         OLED_Display.setTextColor(SSD1306_WHITE);
         OLED_Display.setCursor(0, 10);
         OLED_Display.println(F("Brightness:"));
+        OLED_Display.setCursor(90, 10);
+        OLED_Display.println(F("0"));
         OLED_Display.setCursor(0, 20);
         OLED_Display.println(F("Effect:"));
+        OLED_Display.setCursor(90, 20);
+        OLED_Display.println(F("0"));
+        OLED_Display.setCursor(0, 30);
+        OLED_Display.println(F("Config:"));
+        OLED_Display.setCursor(90, 30);
+        OLED_Display.println(F("0"));
         OLED_Display.display();
         Serial.println("Display initialized!");
     }
@@ -137,6 +146,10 @@ inline void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt) {
             OLED_Display.fillRect(90, 20, 50, 10, SSD1306_BLACK);
             OLED_Display.setCursor(90, 20);
             OLED_Display.println(Encoder.effect);
+            OLED_Display.fillRect(90, 30, 50, 10, SSD1306_BLACK);
+            OLED_Display.setCursor(90, 30);
+            int index = static_cast<int>(Encoder.selectedSegConfig);
+            OLED_Display.println(index);
             OLED_Display.display();
         };
 

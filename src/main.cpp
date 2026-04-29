@@ -1,6 +1,5 @@
 #include <Arduino.h>
 #include <multiple_rotary_encoder.h>
-#define Serial Serial0
 #ifdef WOKWI_SIM
     #define Serial Serial0
     #include <wled.h>
@@ -16,7 +15,7 @@ void setup() {
     Serial.begin(115200);
     delay(1000);
 
-    Serial.println("\n--- Start WLED Usermod Mock ---");
+    Serial.println("--- Start WLED Usermod Mock ---");
 
     encoder_manager.initOLED();
 

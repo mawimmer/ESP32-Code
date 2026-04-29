@@ -30,26 +30,26 @@ public:
         if (pin < 0 || pin >= 40) return true;
         
         if (allocatedPins[pin]) {
-            Serial.printf("[Mock PinManager] FEHLER: Pin %d ist bereits blockiert!\n", pin);
+            Serial.printf("[Mock PinManager] FEHLER: Pin %d ist bereits blockiert!\r\n", pin);
             return false;
         }
         
         allocatedPins[pin] = true;
-        Serial.printf("[Mock PinManager] SUCCESS: Pin %d erfolgreich reserviert.\n", pin);
+        Serial.printf("[Mock PinManager] SUCCESS: Pin %d erfolgreich reserviert.\r\n", pin);
         return true;
     }
 
     void deallocatePin(int pin, int owner) {
         if (pin >= 0 && pin < 40) {
             allocatedPins[pin] = false;
-            Serial.printf("[Mock PinManager] INFO: Pin %d wurde wieder freigegeben.\n", pin);
+            Serial.printf("[Mock PinManager] INFO: Pin %d wurde wieder freigegeben.\r\n", pin);
         }
     }
 
     void mockBlockPinForTest(int pin) {
         if (pin >= 0 && pin < 40) {
             allocatedPins[pin] = true;
-            Serial.printf("[Mock Setup] Pin %d künstlich für Testzwecke blockiert.\n", pin);
+            Serial.printf("[Mock Setup] Pin %d künstlich für Testzwecke blockiert.\r\n", pin);
         }
     }
 };
@@ -74,7 +74,7 @@ struct Segment {
             if (option == SEG_OPTION_ON) {
                 isOn = value;
             }
-            Serial.printf("[Mock] Segment Option %d gesetzt auf %s\n", option, value ? "true" : "false");
+            Serial.printf("[Mock] Segment Option %d gesetzt auf %s\r\n", option, value ? "true" : "false");
     }
 
     bool getOption(uint8_t option) {
@@ -86,7 +86,7 @@ struct Segment {
 
     void setMode(uint8_t newMode) {
         mode = newMode;
-        Serial.printf("[Mock] Segment Mode gesetzt auf %d\n", mode);
+        Serial.printf("[Mock] Segment Mode gesetzt auf %d\r\n", mode);
     }
 };
 
@@ -95,7 +95,7 @@ private:
     Segment dummySegment;
 public:
     Segment& getSegment(int8_t id) {
-        Serial.printf("[Mock] Hole Segment ID: %d\n", id);
+        Serial.printf("[Mock] Hole Segment ID: %d\r\n", id);
         return dummySegment;
     }
 };
@@ -103,11 +103,11 @@ public:
 extern Strip strip;
 
 inline void stateUpdated(uint8_t callMode) {
-    Serial.printf("[Mock] stateUpdated(callMode=%d)\n", callMode);
+    Serial.printf("[Mock] stateUpdated(callMode=%d)\r\n", callMode);
 }
 
 inline void updateInterfaces(uint8_t callMode) {
-    Serial.printf("[Mock] updateInterfaces(callMode=%d)\n", callMode);
+    Serial.printf("[Mock] updateInterfaces(callMode=%d)\r\n", callMode);
 }
 
 template <typename T>

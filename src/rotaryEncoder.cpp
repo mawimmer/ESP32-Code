@@ -65,10 +65,12 @@ void rotaryEncoder::RotationEventHandler() {
             //some config adjustment
             //setSegmentEffectConfig()
             Select_Effect_Config();
+            encoder_manager.updateDisplay(*this);
             break;
         
         case Rotary_Encoder_MODI::EFFECT_CONFIG_SELECTED_MODI:
-            Effect_Config_Push();
+            Select_Effect_Config();
+            break;
 
     }
     deltaValue = 0;
@@ -184,9 +186,11 @@ void rotaryEncoder::Effect_Config_Push() {
 
 
 void rotaryEncoder::Select_Effect_Config() {
-    Serial.println("Effect_Config_Push");
+    Serial.println("Select_Effect_Config");
 
     int8_t configIndex = static_cast<int>(selectedSegConfig);
+
+    Serial.println(configIndex);
 
     configIndex += (deltaValue / pulsesPerDetent);
 
@@ -195,7 +199,7 @@ void rotaryEncoder::Select_Effect_Config() {
     } else if(configIndex < 0) {
         configIndex = 0;
     }
-
+    Serial.println(configIndex);
     selectedSegConfig = static_cast<selectedSegmentConfig>(configIndex);
 }
 
@@ -282,6 +286,7 @@ void rotaryEncoder::updateButtonState(int32_t timeNOW) {
                     return;
                 } 
                 if(!waitingForDoubleClick) {
+                    Serial.println("waiting for doubleclick");
                     waitingForDoubleClick = true;
                     timeOfFirstClick = timeNOW;
                     buttonPressHandled = true;
