@@ -61,6 +61,15 @@ void rotaryEncoder::RotationEventHandler() {
         case Rotary_Encoder_MODI::TOGGLED_OFF:
             break;
 
+        case Rotary_Encoder_MODI::EFFECT_CONFIG_MODI:
+            //some config adjustment
+            //setSegmentEffectConfig()
+            Select_Effect_Config();
+            break;
+        
+        case Rotary_Encoder_MODI::EFFECT_CONFIG_SELECTED_MODI:
+            Effect_Config_Push();
+
     }
     deltaValue = 0;
 
@@ -82,21 +91,33 @@ void rotaryEncoder::ButtonEventHandler() {
                 MODI = Rotary_Encoder_MODI::BRIGHTNESS_MODI;
                 rotationDelay = BRIGHTNESS_ROTATION_DELAY;
                 pcnt_counter_resume(unit);
-
                 break;
+
             }
             case Rotary_Encoder_MODI::BRIGHTNESS_MODI:
                 Serial.println("was BRIGHTNESS - now EFFECT");
                 MODI = Rotary_Encoder_MODI::EFFECT_MODI;
                 rotationDelay = EFFECT_ROTATION_DELAY;
                 break;
+
             case Rotary_Encoder_MODI::EFFECT_MODI:
                 Serial.println("was EFFECT- now BRIGHTNESS");
                 MODI = Rotary_Encoder_MODI::BRIGHTNESS_MODI;
                 rotationDelay = BRIGHTNESS_ROTATION_DELAY;
                 break;
+            
+            case Rotary_Encoder_MODI::EFFECT_CONFIG_MODI:
+                Serial.println("Config was selected");
+                MODI = Rotary_Encoder_MODI::EFFECT_CONFIG_SELECTED_MODI;
+                break;
+            
+            case Rotary_Encoder_MODI::EFFECT_CONFIG_SELECTED_MODI:
+                Serial.println("Leaving selected config back to config selection");
+                MODI = Rotary_Encoder_MODI::EFFECT_CONFIG_MODI;
+                break;
+
         }
-        
+
     } else if (eventButton == ButtonEventType::LONG_PRESS && MODI != Rotary_Encoder_MODI::TOGGLED_OFF) {
         Serial.println("LONG PRESS - Toggling OFF");
         Segment& seg = strip.getSegment(segmentID);
@@ -106,6 +127,18 @@ void rotaryEncoder::ButtonEventHandler() {
         MODI = Rotary_Encoder_MODI::TOGGLED_OFF;
         encoder_manager.OnOffDisplay(*this);
         pcnt_counter_pause(unit);
+
+    } else if (eventButton == ButtonEventType::DOUBLE_PRESS) {
+        switch (MODI) {
+            case Rotary_Encoder_MODI::EFFECT_MODI:
+                MODI = Rotary_Encoder_MODI::EFFECT_CONFIG_MODI;
+                break;
+
+            case Rotary_Encoder_MODI::EFFECT_CONFIG_MODI:
+                MODI = Rotary_Encoder_MODI::EFFECT_MODI;
+                break;
+
+        }
     }
     eventButton = ButtonEventType::NONE;
 
@@ -143,6 +176,41 @@ void rotaryEncoder::Effect_Push() {
     //strip.setBrightness(brightness, false);
 
     WLED_Bridge::setSegmentEffect(segmentID, effect);
+    
+}
+
+
+
+void rotaryEncoder::Select_Effect_Config() {
+    Serial.println("Effect_Config_Push");
+
+    int8_t configIndex = static_cast<int>(selectedSegConfig);
+
+    configIndex += (deltaValue / pulsesPerDetent);
+
+    if(configIndex > 5) {
+        configIndex = 5;
+    } else if(configIndex < 0) {
+        configIndex = 0;
+    }
+
+    selectedSegConfig = static_cast<selectedSegmentConfig>(configIndex);
+}
+
+
+void rotaryEncoder::Effect_Push() {
+    Serial.println("Effect_Push");
+
+    int32_t newEffectValue = effectValue + (deltaValue / pulsesPerDetent);
+
+    if (newEffectValue < 1) newEffectValue = 1;
+    if (newEffectValue > 255) newEffectValue = 255;
+
+    effectValue = newEffectValue;
+
+    //strip.setBrightness(brightness, false);
+
+    WLED_Bridge::setSegmentEffectConfig(segmentID, effect, effectValue);
     
 }
 

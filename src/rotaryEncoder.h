@@ -21,7 +21,10 @@ class rotaryEncoder {
     gpio_num_t pin_sw;
     int8_t brightness = 0;
     int8_t effect = 0;
+    int8_t effectValue = 0;
     int8_t segmentID;
+
+    uint8_t selectedConfig = 0;
 
     int pulsesPerDetent = 2;
 
@@ -34,6 +37,8 @@ class rotaryEncoder {
     enum class Rotary_Encoder_MODI {
         BRIGHTNESS_MODI,
         EFFECT_MODI,
+        EFFECT_CONFIG_MODI,
+        EFFECT_CONFIG_SELECTED_MODI,
         TOGGLED_OFF
     };
 
@@ -45,10 +50,21 @@ class rotaryEncoder {
         LONG_PRESS,
     };
 
+    enum class selectedSegmentConfig {
+        SPEED,
+        INTENSITY,
+        OPACITY,
+        CUSTOM1,
+        CUSTOM2,
+        CUSTOM3
+    };
+
         /**
      * Click and Rotation Execution States
      */
     ButtonEventType eventButton = ButtonEventType::NONE;
+
+    selectedSegmentConfig selectedSegConfig = selectedSegmentConfig::SPEED;
 
     bool eventRotation = false;
 
@@ -106,9 +122,14 @@ class rotaryEncoder {
 
         void Effect_Push();
 
+        void Effect_Config_Push();
+
+        void Select_Effect_Config();
+
         void updatePCNT_Unit(int i);
 
         void updateButtonState(int32_t timeNOW);
+        
 
 
 };
