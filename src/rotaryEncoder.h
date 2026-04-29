@@ -19,9 +19,9 @@ class rotaryEncoder {
     gpio_num_t pin_clk;
     gpio_num_t pin_dt;
     gpio_num_t pin_sw;
-    int8_t brightness = 0;
-    int8_t effect = 0;
-    int8_t effectValue = 0;
+    int brightness = 0;
+    int effect = 0;
+    int effectValue = 0;
     int8_t segmentID;
 
     uint8_t selectedConfig = 0;

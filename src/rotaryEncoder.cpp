@@ -163,19 +163,21 @@ void rotaryEncoder::Brightness_Push() {
 
 }
 
-void rotaryEncoder::Effect_Push() {
-    Serial.println("Effect_Push");
+void rotaryEncoder::Effect_Config_Push() {
+    Serial.println("Effect_Config_Push");
 
     int32_t newEffect = effect + (deltaValue / pulsesPerDetent);
 
     if (newEffect < 1) newEffect = 1;
     if (newEffect > 255) newEffect = 255;
 
-    effect = newEffect;
+    //effect = newEffect;
 
     //strip.setBrightness(brightness, false);
 
-    WLED_Bridge::setSegmentEffect(segmentID, effect);
+    int8_t configIndex = static_cast<int>(selectedSegConfig);
+
+    WLED_Bridge::setSegmentEffectConfig(segmentID, configIndex, effect);
     
 }
 

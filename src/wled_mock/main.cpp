@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include <multiple_rotary_encoder.h>
-
+#define Serial Serial0
 #ifdef WOKWI_SIM
     #define Serial Serial0
     #include <wled_mock/wled.h>

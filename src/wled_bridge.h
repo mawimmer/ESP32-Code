@@ -43,18 +43,17 @@ namespace WLED_Bridge {
 
     inline void setSegmentEffectConfig(int8_t segmentID, int8_t configIndex, int8_t deltaValue) {
         Segment& seg = strip.getSegment(segmentID);
-
-        int16_t newValue = 0;
      
         switch(configIndex) {
-            case 0: newValue = seg.speed + deltaValue; break;
-            case 1: newValue = seg.intensity + deltaValue; break;
-            case 2: newValue = seg.opacity + deltaValue; break;
-            case 3: newValue = seg.custom1 + deltaValue; break;
-            case 4: newValue = seg.custom2 + deltaValue; break;
-            case 5: newValue = seg.custom3 + deltaValue; break;
+            case 0: seg.speed += deltaValue; break;
+            case 1: seg.intensity += deltaValue; break;
+            case 2: seg.opacity += deltaValue; break;
+            case 3: seg.custom1 += deltaValue; break;
+            case 4: seg.custom2 += deltaValue; break;
+            case 5: seg.custom3 += deltaValue; break;
             default: return;
         }
+        
 
         stateUpdated(CALL_MODE_BUTTON);
         updateInterfaces(CALL_MODE_BUTTON);

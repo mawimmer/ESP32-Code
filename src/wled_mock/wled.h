@@ -6,19 +6,13 @@
     #define Serial Serial0
 #endif
 
-
 #define CALL_MODE_BUTTON 1
 #define SEG_OPTION_ON 0
 #ifndef FPSTR
 #define FPSTR(pstr_pointer) (reinterpret_cast<const __FlashStringHelper *>(pstr_pointer))
 #endif
 
-
 #define REGISTER_USERMOD(name) 
-
-
-
-
 
 namespace PinOwner {
     enum Type {
@@ -27,14 +21,11 @@ namespace PinOwner {
     };
 }
 
-
 class PinManagerClass {
 private:
-
     bool allocatedPins[40] = {false}; 
 
 public:
-
     bool allocatePin(int pin, bool output, int owner) {
         if (pin < 0 || pin >= 40) return true;
         
@@ -48,14 +39,12 @@ public:
         return true;
     }
 
-
     void deallocatePin(int pin, int owner) {
         if (pin >= 0 && pin < 40) {
             allocatedPins[pin] = false;
             Serial.printf("[Mock PinManager] INFO: Pin %d wurde wieder freigegeben.\n", pin);
         }
     }
-
 
     void mockBlockPinForTest(int pin) {
         if (pin >= 0 && pin < 40) {
@@ -65,13 +54,19 @@ public:
     }
 };
 
-
 extern PinManagerClass pinManager;
-
 
 struct Segment {
     uint8_t opacity = 255;
     uint8_t mode = 0;
+
+
+    uint16_t speed = 128;
+    uint16_t intensity = 128;
+    uint8_t custom1 = 0;
+    uint8_t custom2 = 0;
+    uint8_t custom3 = 0;
+
 
     bool isOn = true; 
     
@@ -81,7 +76,6 @@ struct Segment {
             }
             Serial.printf("[Mock] Segment Option %d gesetzt auf %s\n", option, value ? "true" : "false");
     }
-
 
     bool getOption(uint8_t option) {
         if (option == SEG_OPTION_ON) {
@@ -96,7 +90,6 @@ struct Segment {
     }
 };
 
-
 class Strip {
 private:
     Segment dummySegment;
@@ -106,7 +99,6 @@ public:
         return dummySegment;
     }
 };
-
 
 extern Strip strip;
 
@@ -118,14 +110,12 @@ inline void updateInterfaces(uint8_t callMode) {
     Serial.printf("[Mock] updateInterfaces(callMode=%d)\n", callMode);
 }
 
-
 template <typename T>
 void getJsonValue(const JsonVariant& value, T& target) {
     if (!value.isNull()) {
         target = value.as<T>();
     }
 }
-
 
 class Usermod {
 public:
