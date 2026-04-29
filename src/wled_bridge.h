@@ -3,7 +3,7 @@
 
 #ifdef WOKWI_SIM
     #define Serial Serial0
-    #include <wled_mock/wled.h>
+    #include <wled.h>
 #else
     #include <wled.h>
 #endif

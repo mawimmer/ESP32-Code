@@ -10,7 +10,7 @@
   #define DEFAULT_SDA 21
   #define DEFAULT_SCL 22
   #include <wled_bridge.h>
-  #include <wled_mock/wled.h>
+  #include <wled.h>
 #else
   #include <wled.h>
   #define DEFAULT_SDA 17
