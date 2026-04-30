@@ -2,8 +2,13 @@
 #include <Arduino.h>
 #include <driver/pcnt.h>
 
-#ifdef WOKWI_SIM
+#if defined(WOKWI_SIM)
     #define Serial Serial0
+    #include <wled_mock.h>
+#elif defined(WLED_DEV)
+    #include "../../WLED/wled00/wled.h"
+#else
+    #include <wled.h>
 #endif
 
 void IRAM_ATTR buttonISR(void* arg);

@@ -2,8 +2,13 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 
-#ifdef WOKWI_SIM
+#if defined(WOKWI_SIM)
     #define Serial Serial0
+    #include <wled.h>
+#elif defined(WLED_DEV)
+    #include "../../WLED/wled00/wled.h"
+#else
+    #include <wled.h>
 #endif
 
 #define CALL_MODE_BUTTON 1

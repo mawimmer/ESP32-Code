@@ -3,14 +3,14 @@
 #include <wled_bridge.h>
 
 
-#ifdef WOKWI_SIM
+#if defined(WOKWI_SIM)
     #define Serial Serial0
-    #include <wled_bridge.h>
-    #include <wled.h>
+    #include <wled_mock.h>
+#elif defined(WLED_DEV)
+    #include "../../WLED/wled00/wled.h"
 #else
     #include <wled.h>
 #endif
-
 /**
  * Hardware Interrupt Function
  */
@@ -178,7 +178,6 @@ void rotaryEncoder::Effect_Config_Push() {
     //strip.setBrightness(brightness, false);
 
     int8_t configIndex = static_cast<int>(selectedSegConfig);
-
     WLED_Bridge::setSegmentEffectConfig(segmentID, configIndex, effect);
     
 }
@@ -215,7 +214,9 @@ void rotaryEncoder::Effect_Push() {
     effect = newEffectValue;
 
     //strip.setBrightness(brightness, false);
-
+    char effectName[33];
+    extractModeName(effect,JSON_mode_names , effectName, 32)
+    Serial.println(effectName);
     WLED_Bridge::setSegmentEffectConfig(segmentID, effect, effect);
     
 }

@@ -4,20 +4,20 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <rotaryEncoder.h>
+#include <wled_bridge.h>
 
-#ifdef WOKWI_SIM
+#if defined(WOKWI_SIM)
   #define Serial Serial0
   #define DEFAULT_SDA 21
   #define DEFAULT_SCL 22
-  #include <wled_bridge.h>
-  #include <wled.h>
+  #include <wled_mock.h>
+#elif defined(WLED_DEV)
+  #include "../../WLED/wled00/wled.h"
 #else
   #include <wled.h>
   #define DEFAULT_SDA 17
   #define DEFAULT_SCL 18
 #endif
-
-
 
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64

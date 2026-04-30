@@ -5,11 +5,15 @@
 #include <Adafruit_SSD1306.h>
 #include <rotaryEncoder.h>
 #include <multiple_rotary_encoder.h>
+#include <wled_bridge.h>
 
-#ifdef WOKWI_SIM
+
+#if defined(WOKWI_SIM)
     #define Serial Serial0
-    #include <wled_bridge.h>
-    #include <wled.h>
+    #include <wled_mock.h>
+#elif defined(WLED_DEV)
+    #error "This Project can not be built in this env."
+    #include "../../WLED/wled00/wled.h"
 #else
     #include <wled.h>
 #endif
@@ -150,6 +154,11 @@ inline void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt) {
             OLED_Display.setCursor(90, 30);
             int index = static_cast<int>(Encoder.selectedSegConfig);
             OLED_Display.println(index);
+            char lineBuffer[17];
+            extractModeName(Encoder.effect, JSON_mode_names, lineBuffer, 16);
+            OLED_Display.fillRect(0, 40, 100, 10, SSD1306_BLACK);
+            OLED_Display.setCursor(0, 40);
+            OLED_Display.println(lineBuffer);
             OLED_Display.display();
         };
 
