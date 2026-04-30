@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <multiple_rotary_encoder.h>
 
-#if defined(WOKWI_SIM)
+#if defined(WOKWI_SIM) || defined (MOCK_COMPILE)
     #define Serial Serial0
     #include <wled_mock.h>
 #elif defined(WLED_DEV)

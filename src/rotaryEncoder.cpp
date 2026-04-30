@@ -3,7 +3,7 @@
 #include <wled_bridge.h>
 
 
-#if defined(WOKWI_SIM)
+#if defined(WOKWI_SIM) || defined (MOCK_COMPILE)
     #define Serial Serial0
     #include <wled_mock.h>
 #elif defined(WLED_DEV)
@@ -215,7 +215,7 @@ void rotaryEncoder::Effect_Push() {
 
     //strip.setBrightness(brightness, false);
     char effectName[33];
-    extractModeName(effect,JSON_mode_names , effectName, 32)
+    extractModeName(effect,JSON_mode_names , effectName, 32);
     Serial.println(effectName);
     WLED_Bridge::setSegmentEffectConfig(segmentID, effect, effect);
     

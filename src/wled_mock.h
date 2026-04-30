@@ -2,7 +2,7 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 
-#if defined(WOKWI_SIM)
+#if defined(WOKWI_SIM) || defined (MOCK_COMPILE)
     #define Serial Serial0
     #include <wled.h>
 #elif defined(WLED_DEV)

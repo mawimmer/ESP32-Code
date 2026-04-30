@@ -1,7 +1,7 @@
 #pragma once
 #include <Arduino.h>
 
-#if defined(WOKWI_SIM)
+#if defined(WOKWI_SIM) || defined (MOCK_COMPILE)
     #define Serial Serial0
     #include <wled_mock.h>
 #elif defined(WLED_DEV)
@@ -32,7 +32,6 @@ namespace WLED_Bridge {
         seg.opacity = brightness;
         stateUpdated(CALL_MODE_BUTTON);
         updateInterfaces(CALL_MODE_BUTTON);
-
     }
 
     inline void setSegmentEffect(int8_t segmentID, int8_t effectID) {

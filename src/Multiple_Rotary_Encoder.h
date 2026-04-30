@@ -6,7 +6,7 @@
 #include <rotaryEncoder.h>
 #include <wled_bridge.h>
 
-#if defined(WOKWI_SIM)
+#if defined(WOKWI_SIM) || defined (MOCK_COMPILE)
   #define Serial Serial0
   #define DEFAULT_SDA 21
   #define DEFAULT_SCL 22
@@ -73,7 +73,7 @@ private:
     int displayPinSCL = DEFAULT_SCL;
 
     int longShortPressThreshold = 500;
-    int doublePressThreshold = 200;
+    int doublePressThreshold = 400;
     bool enabled = false;
 
     Adafruit_SSD1306 OLED_Display{SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET};
