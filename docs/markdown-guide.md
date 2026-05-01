@@ -1,5 +1,5 @@
 
-# Style Guide
+# Markdown Guide
 
 > [!NOTE] 
 > Links and tips to keep the documentation-style clean.
@@ -10,4 +10,6 @@ The documentation is written with the [Basic Writing and Formatting Syntax](http
 
 As well as [this Editor](https://readme.so/editor).
 
+
+https://github.com/zaaack/vscode-markdown-editor
 
