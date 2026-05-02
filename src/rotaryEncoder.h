@@ -29,8 +29,6 @@ class rotaryEncoder {
     //int effectValue = 0;
     int8_t segmentID;
 
-    uint8_t selectedConfig = 0;
-
     int pulsesPerDetent = 2;
 
     int rotationDelay = 0;
@@ -55,7 +53,7 @@ class rotaryEncoder {
         LONG_PRESS,
     };
 
-    enum class selectedSegmentConfig {
+    enum class selectedEffectConfig {
         SPEED,
         INTENSITY,
         OPACITY,
@@ -69,7 +67,7 @@ class rotaryEncoder {
      */
     ButtonEventType eventButton = ButtonEventType::NONE;
 
-    selectedSegmentConfig selectedSegConfig = selectedSegmentConfig::SPEED;
+    selectedEffectConfig selectedEffConfig = selectedEffectConfig::SPEED;
 
     bool eventRotation = false;
 

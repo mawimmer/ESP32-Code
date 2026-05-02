@@ -12,17 +12,25 @@
 
 namespace WLED_Bridge {
 
+    int lastUpdate = 0;
+
     inline void toggleSegment(int8_t segmentID) {
         Segment& seg = strip.getSegment(segmentID);
 
         if(seg.getOption(SEG_OPTION_ON)) {
             seg.setOption(SEG_OPTION_ON, false);
             stateUpdated(CALL_MODE_BUTTON);
-            updateInterfaces(CALL_MODE_BUTTON);
+
+            // not needed? apparently stateUpdated() schedules interface updates
+            //
+            // updateInterfaces(CALL_MODE_BUTTON);
         } else {
             seg.setOption(SEG_OPTION_ON, true);
             stateUpdated(CALL_MODE_BUTTON);
-            updateInterfaces(CALL_MODE_BUTTON);
+
+            // not needed? apparently stateUpdated() schedules interface updates
+            //
+            // updateInterfaces(CALL_MODE_BUTTON);
 
         }
     }
@@ -31,13 +39,23 @@ namespace WLED_Bridge {
         Segment& seg = strip.getSegment(segmentID);
         seg.opacity = brightness;
         stateUpdated(CALL_MODE_BUTTON);
-        updateInterfaces(CALL_MODE_BUTTON);
+
+        // not needed? apparently stateUpdated() schedules interface updates
+        //
+        // int timeNOW = millis();
+        // if( timeNOW - lastUpdate > 200 ) {
+        //     updateInterfaces(CALL_MODE_BUTTON);
+        //     lastUpdate = timeNOW;
+        // }
+
     }
 
     inline void setSegmentEffect(int8_t segmentID, int8_t effectID) {
         Segment& seg = strip.getSegment(segmentID);
         seg.setMode(effectID);
-        stateUpdated(CALL_MODE_BUTTON);
+        colorUpdated(CALL_MODE_BUTTON); // not like stateUpdated(), colorUpdated() pushes effect changes
+
+        // i guess needed, no statement colorUpdated() schedules interface updates like stateUpdated()
         updateInterfaces(CALL_MODE_BUTTON);
 
     }
@@ -55,10 +73,13 @@ namespace WLED_Bridge {
             default: return;
         }
         
-
         stateUpdated(CALL_MODE_BUTTON);
-        updateInterfaces(CALL_MODE_BUTTON);
+
+        // not needed? apparently stateUpdated() schedules interface updates
+        //
+        // updateInterfaces(CALL_MODE_BUTTON);
     }
+
 };
 
 

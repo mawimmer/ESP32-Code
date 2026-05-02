@@ -144,21 +144,28 @@ inline void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt) {
 
             Serial.println("updateDisplay");
 
+            //update brightness
             OLED_Display.fillRect(90, 10, 50, 10, SSD1306_BLACK);
             OLED_Display.setCursor(90, 10);
             OLED_Display.println(Encoder.brightness);
+
+            //update effect name
             OLED_Display.fillRect(90, 20, 50, 10, SSD1306_BLACK);
             OLED_Display.setCursor(90, 20);
-            OLED_Display.println(Encoder.effect);
-            OLED_Display.fillRect(90, 30, 50, 10, SSD1306_BLACK);
-            OLED_Display.setCursor(90, 30);
-            int index = static_cast<int>(Encoder.selectedSegConfig);
-            OLED_Display.println(index);
             char lineBuffer[17];
             extractModeName(Encoder.effect, JSON_mode_names, lineBuffer, 16);
-            OLED_Display.fillRect(0, 40, 100, 10, SSD1306_BLACK);
-            OLED_Display.setCursor(0, 40);
             OLED_Display.println(lineBuffer);
+
+            //update effect config name + value
+            OLED_Display.fillRect(90, 30, 50, 10, SSD1306_BLACK);
+            int effectConfigValue;
+            extractModeSlider(Encoder.effect, Encoder.selectedEffConfig, lineBuffer, 16, effectConfigValue*);
+            OLED_Display.setCursor(0, 30);
+            OLED_Display.println(lineBuffer);
+            OLED_Display.setCursor(90, 30);
+            OLED_Display.println(effectConfigValue);
+
+            //i2c transfer
             OLED_Display.display();
         };
 

@@ -62,14 +62,13 @@ void rotaryEncoder::RotationEventHandler() {
             break;
 
         case Rotary_Encoder_MODI::EFFECT_CONFIG_MODI:
-            //some config adjustment
-            //setSegmentEffectConfig()
             Select_Effect_Config();
             encoder_manager.updateDisplay(*this);
             break;
         
         case Rotary_Encoder_MODI::EFFECT_CONFIG_SELECTED_MODI:
-            Select_Effect_Config();
+            WLED_Bridge::setSegmentEffectConfig(segmentID, selectedEffConfig, deltaValue);
+            encoder_manager.updateDisplay(*this);
             break;
 
     }
@@ -177,7 +176,7 @@ void rotaryEncoder::Effect_Config_Push() {
 
     //strip.setBrightness(brightness, false);
 
-    int8_t configIndex = static_cast<int>(selectedSegConfig);
+    int8_t configIndex = static_cast<int>(selectedEffConfig);
     WLED_Bridge::setSegmentEffectConfig(segmentID, configIndex, effect);
     
 }
@@ -187,7 +186,7 @@ void rotaryEncoder::Effect_Config_Push() {
 void rotaryEncoder::Select_Effect_Config() {
     Serial.println("Select_Effect_Config");
 
-    int8_t configIndex = static_cast<int>(selectedSegConfig);
+    int8_t configIndex = static_cast<int>(selectedEffConfig);
 
     Serial.println(configIndex);
 
@@ -199,7 +198,7 @@ void rotaryEncoder::Select_Effect_Config() {
         configIndex = 0;
     }
     Serial.println(configIndex);
-    selectedSegConfig = static_cast<selectedSegmentConfig>(configIndex);
+    selectedEffConfig = static_cast<selectedSegmentConfig>(configIndex);
 }
 
 
