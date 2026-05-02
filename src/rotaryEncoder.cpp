@@ -67,7 +67,7 @@ void rotaryEncoder::RotationEventHandler() {
             break;
         
         case Rotary_Encoder_MODI::EFFECT_CONFIG_SELECTED_MODI:
-            WLED_Bridge::setSegmentEffectConfig(segmentID, selectedEffConfig, deltaValue);
+            WLED_Bridge::setSegmentEffectConfig(segmentID, static_cast<int8_t>(selectedEffConfig), deltaValue);
             encoder_manager.updateDisplay(*this);
             break;
 
@@ -198,7 +198,7 @@ void rotaryEncoder::Select_Effect_Config() {
         configIndex = 0;
     }
     Serial.println(configIndex);
-    selectedEffConfig = static_cast<selectedSegmentConfig>(configIndex);
+    selectedEffConfig = static_cast<selectedEffectConfig>(configIndex);
 }
 
 
@@ -216,7 +216,7 @@ void rotaryEncoder::Effect_Push() {
     char effectName[33];
     extractModeName(effect,JSON_mode_names , effectName, 32);
     Serial.println(effectName);
-    WLED_Bridge::setSegmentEffectConfig(segmentID, effect, effect);
+    WLED_Bridge::setSegmentEffect(segmentID, effect);
     
 }
 

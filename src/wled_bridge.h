@@ -12,7 +12,7 @@
 
 namespace WLED_Bridge {
 
-    int lastUpdate = 0;
+    extern unsigned long lastUpdate;
 
     inline void toggleSegment(int8_t segmentID) {
         Segment& seg = strip.getSegment(segmentID);
@@ -52,9 +52,9 @@ namespace WLED_Bridge {
 
     inline void setSegmentEffect(int8_t segmentID, int8_t effectID) {
         Segment& seg = strip.getSegment(segmentID);
-        seg.setMode(effectID);
+        seg.setMode(effectID, false);
         colorUpdated(CALL_MODE_BUTTON); // not like stateUpdated(), colorUpdated() pushes effect changes
-
+        stateUpdated(CALL_MODE_BUTTON);
         // i guess needed, no statement colorUpdated() schedules interface updates like stateUpdated()
         updateInterfaces(CALL_MODE_BUTTON);
 
@@ -62,18 +62,19 @@ namespace WLED_Bridge {
 
     inline void setSegmentEffectConfig(int8_t segmentID, int8_t configIndex, int8_t deltaValue) {
         Segment& seg = strip.getSegment(segmentID);
-     
+        int newValue;
         switch(configIndex) {
-            case 0: seg.speed += deltaValue; break;
-            case 1: seg.intensity += deltaValue; break;
-            case 2: seg.opacity += deltaValue; break;
-            case 3: seg.custom1 += deltaValue; break;
-            case 4: seg.custom2 += deltaValue; break;
-            case 5: seg.custom3 += deltaValue; break;
+            case 0: newValue = seg.speed + deltaValue;     seg.speed = constrain(newValue, 0, 255); break;
+            case 1: newValue = seg.intensity + deltaValue; seg.intensity = constrain(newValue, 0, 255); break;
+            case 2: newValue = seg.opacity + deltaValue;   seg.opacity = constrain(newValue, 0, 255); break;
+            case 3: newValue = seg.custom1 + deltaValue;   seg.custom1 = constrain(newValue, 0, 255); break;
+            case 4: newValue = seg.custom2 + deltaValue;   seg.custom2 = constrain(newValue, 0, 255); break;
+            case 5: newValue = seg.custom3 + deltaValue;   seg.custom3 = constrain(newValue, 0, 255); break;
             default: return;
         }
         
         stateUpdated(CALL_MODE_BUTTON);
+        colorUpdated(CALL_MODE_BUTTON);
 
         // not needed? apparently stateUpdated() schedules interface updates
         //

@@ -157,13 +157,25 @@ inline void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt) {
             OLED_Display.println(lineBuffer);
 
             //update effect config name + value
-            OLED_Display.fillRect(90, 30, 50, 10, SSD1306_BLACK);
-            int effectConfigValue;
-            extractModeSlider(Encoder.effect, Encoder.selectedEffConfig, lineBuffer, 16, effectConfigValue*);
+            uint8_t actualValue = 0;
+            Segment& seg = strip.getSegment(Encoder.segmentID);
+            switch(static_cast<int>(Encoder.selectedEffConfig)) {
+                case 0: actualValue = seg.speed; break;
+                case 1: actualValue = seg.intensity; break;
+                case 2: actualValue = seg.opacity; break;
+                case 3: actualValue = seg.custom1; break;
+                case 4: actualValue = seg.custom2; break;
+                case 5: actualValue = seg.custom3; break;
+                default: actualValue = 0; break;
+            }
+
+            OLED_Display.fillRect(0, 30, 124, 10, SSD1306_BLACK);
+            uint8_t effectConfigValue;
+            extractModeSlider(Encoder.effect, static_cast<uint8_t>(Encoder.selectedEffConfig), lineBuffer, 16, &effectConfigValue);
             OLED_Display.setCursor(0, 30);
             OLED_Display.println(lineBuffer);
             OLED_Display.setCursor(90, 30);
-            OLED_Display.println(effectConfigValue);
+            OLED_Display.println(actualValue);
 
             //i2c transfer
             OLED_Display.display();
