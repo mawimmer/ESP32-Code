@@ -4,7 +4,6 @@
 
 #if defined(WOKWI_SIM) || defined (MOCK_COMPILE)
     #define Serial Serial0
-    #include <wled.h>
 #elif defined(WLED_DEV)
     #include "../../WLED/wled00/wled.h"
 #else
@@ -130,3 +129,10 @@ public:
     virtual bool readFromConfig(JsonObject& root) { return true; }
     virtual void onStateChange(uint8_t mode) {}
 };
+
+
+extern int JSON_mode_names;
+inline void extractModeName(int effect,int JSON_mode_names ,char* effectName,int a) {
+    Serial.printf("[Mock] JSON_mode_names\r\n");
+}
+
