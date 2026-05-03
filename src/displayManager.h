@@ -36,7 +36,7 @@ public:
     }
 
     // A clean, generic function for the Bridge to call
-    void drawEncoderState(int encoderIndex, int8_t segmentID, Rotary_Encoder_MODI mode, selectedEffectConfig config, int16_t value) {
+    void drawEncoderState(int encoderIndex, int8_t segmentID, Rotary_Encoder_MODI mode, selectedEffectConfig config, int16_t value, const char* effectName = nullptr) {
         if (!isInitialized) return;
 
         display.clearDisplay();
@@ -65,26 +65,32 @@ public:
             case Rotary_Encoder_MODI::EFFECT_MODI:
                 display.println("EFFECT:");
                 display.setCursor(0, 35);
-                display.printf("ID: %d\n", value); // Draw the effect ID
-                break;
-                
+                if (effectName != nullptr && effectName[0] != '\0') {
+                    display.printf("%s\n", effectName); 
+                } else {
+                    display.printf("ID: %d\n", value); // Fallback just in case
+                }
+                break;   
             case Rotary_Encoder_MODI::EFFECT_CONFIG_MODI:
+            case Rotary_Encoder_MODI::EFFECT_CONFIG_SELECTED_MODI:
                 display.setTextSize(1);
-                display.print("CONFIG: ");
+                display.print("CONFIG:");
                 
-                // Translate the Enum to a String safely
-                switch(config) {
-                    case selectedEffectConfig::SPEED: display.println("SPEED"); break;
-                    case selectedEffectConfig::INTENSITY: display.println("INTENSITY"); break;
-                    case selectedEffectConfig::OPACITY: display.println("OPACITY"); break;
-                    case selectedEffectConfig::CUSTOM1: display.println("CUSTOM 1"); break;
-                    case selectedEffectConfig::CUSTOM2: display.println("CUSTOM 2"); break;
-                    case selectedEffectConfig::CUSTOM3: display.println("CUSTOM 3"); break;
+                display.setCursor(0, 25);
+                if (mode == Rotary_Encoder_MODI::EFFECT_CONFIG_MODI) display.print("> ");
+                else display.print("  ");
+
+                // Print the dynamic name we fetched from the WLED Bridge!
+                if (effectName != nullptr && effectName[0] != '\0') {
+                    display.println(effectName); 
+                } else {
+                    display.println("PARAMETER"); // Fallback
                 }
                 
-                display.setCursor(0, 30);
+                display.setCursor(0, 40);
                 display.setTextSize(2);
-                display.printf("Val: %d\n", value); // Draw the config value
+                if (mode == Rotary_Encoder_MODI::EFFECT_CONFIG_SELECTED_MODI) display.print("> ");
+                display.printf("%d\n", value);
                 break;
         }
 
