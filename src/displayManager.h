@@ -56,12 +56,15 @@ public:
                 display.println("OFF");
                 break;
                 
-            case Rotary_Encoder_MODI::BRIGHTNESS_MODI:
-                display.println("BRIGHT:");
-                display.setCursor(0, 35);
-                display.printf("%d/255\n", value); // Draw the absolute brightness
+            case Rotary_Encoder_MODI::BRIGHTNESS_MODI: {
+                // display.println("BRIGHT:");
+                // display.setCursor(0, 35);
+                // display.printf("%d/255\n", value); // Draw the absolute brightness
+                int barWidth = map(value, 0, 255, 0, 128);
+                display.fillRect(0, 45, barWidth, 3, SSD1306_WHITE);
                 break;
                 
+            } 
             case Rotary_Encoder_MODI::EFFECT_MODI:
                 display.println("EFFECT:");
                 display.setCursor(0, 35);
