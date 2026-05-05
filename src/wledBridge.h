@@ -44,7 +44,9 @@ private:
     DisplayManager oledDisplay;
 
     // 2. Single Source of Truth
-    Rotary_Encoder_MODI encoderModes[4];
+    MenuLevel encoderMenuLevel[4];
+    MenuCategory encoderMenuCategory[4];
+    SettingsMenu encoderSettingsMenu[4];
     selectedEffectConfig encoderConfigs[4];
     int8_t encoderSegments[4];
 
@@ -155,76 +157,191 @@ private:
         }
     }
 
+    template <typename T>
+    void cycleEnum(T& currentEnum, int delta) {
+        int current = static_cast<int>(currentEnum);
+        
+        // Magically grab the total number of items in whatever Enum is passed in!
+        int maxLimit = static_cast<int>(T::_COUNT) - 1; 
+        
+        current += (delta > 0) ? 1 : -1;
+        
+        if (current > maxLimit) current = 0;
+        if (current < 0) current = maxLimit;
+        
+        currentEnum = static_cast<T>(current);
+    }
+
     // --- THE EVENT HANDLER ---
     void handleHardwareEvent(int encoderIndex, rotaryEncoder::ButtonEventType event, int16_t delta) {
-        Rotary_Encoder_MODI& currentMode = encoderModes[encoderIndex];
+        MenuLevel& currentMenuLevel = encoderMenuLevel[encoderIndex];
+        MenuCategory& currentMenuCategory = encoderMenuCategory[encoderIndex];
         int8_t segID = encoderSegments[encoderIndex];
 
         // BUTTON LOGIC
 
         //  SHORT PRESS
+
         if (event == rotaryEncoder::ButtonEventType::SHORT_PRESS) {
-            bool isActuallyOff = !strip.getSegment(segID).getOption(SEG_OPTION_ON);
-            if ( isActuallyOff || currentMode == Rotary_Encoder_MODI::TOGGLED_OFF) {
-                currentMode = Rotary_Encoder_MODI::BRIGHTNESS_MODI;
-                toggleSegment(segID);
-                Serial.printf("Encoder %d: Segment %d ON (Brightness Mode)\n", encoderIndex, segID);
+
+            switch(currentMenuLevel) {
+                case MenuLevel::HOME :
+                    currentMenuLevel = MenuLevel::MENU;
+                    break;
+                
+                case MenuLevel::MENU :
+                    switch(currentMenuCategory) {
+                        case MenuCategory::EFFECTS :
+                            currentMenuLevel = MenuLevel::SELECTING;
+                            break;
+
+                        case MenuCategory::SETTINGS :
+                            currentMenuLevel = MenuLevel::SELECTING;
+                            break;
+
+                        case MenuCategory::NIGHTMODE :
+                            //do something
+                            break;
+
+                        case MenuCategory::SUNRISE :
+                            //do something
+                            break;
+
+                        default:
+                            break;
+                    }
+                break;
+
+                
+                case MenuLevel::SELECTING :
+                    switch(currentMenuCategory) {
+                        case MenuCategory::EFFECTS :
+                            currentMenuLevel = MenuLevel::EDITING;
+                            break;
+
+                        case MenuCategory::SETTINGS:
+                            currentMenuLevel = MenuLevel::EDITING;
+                            break;
+
+                        default:
+                            break;
+                    }
+                break;
             }
-            else if (currentMode == Rotary_Encoder_MODI::BRIGHTNESS_MODI) {
-                currentMode = Rotary_Encoder_MODI::EFFECT_MODI;
-                Serial.printf("Encoder %d: Switched to EFFECT\n", encoderIndex);
-            }
-            else if (currentMode == Rotary_Encoder_MODI::EFFECT_MODI) {
-                currentMode = Rotary_Encoder_MODI::BRIGHTNESS_MODI;
-                Serial.printf("Encoder %d: Looped back to BRIGHTNESS\n", encoderIndex);
-            }
-            else if (currentMode == Rotary_Encoder_MODI::EFFECT_CONFIG_MODI) {
-                currentMode = Rotary_Encoder_MODI::EFFECT_CONFIG_SELECTED_MODI;
-                Serial.printf("Encoder %d: Entered EFFECT CONFIG SELECTED (Editing)\n", encoderIndex);
-            }
-            else if (currentMode == Rotary_Encoder_MODI::EFFECT_CONFIG_SELECTED_MODI) {
-                currentMode = Rotary_Encoder_MODI::EFFECT_CONFIG_MODI;
-                Serial.printf("Encoder %d: Looped back to EFFECT CONFIG\n", encoderIndex);
-            }
+
         }
 
         //  LONG PRESS
         else if (event == rotaryEncoder::ButtonEventType::LONG_PRESS) {
-            if (currentMode != Rotary_Encoder_MODI::TOGGLED_OFF) {
-                currentMode = Rotary_Encoder_MODI::TOGGLED_OFF;
-                toggleSegment(segID);
-                Serial.printf("Encoder %d: Segment %d OFF\n", encoderIndex, segID);
+
+            switch(currentMenuLevel) {
+                case MenuLevel::HOME :
+                    toggleSegment(segID);
+                    currentMenuLevel = MenuLevel::OFF;
+                    break;
+
+                case MenuLevel::EDITING :
+                    switch(currentMenuCategory) {
+                        case MenuCategory::SUNRISE :
+                        case MenuCategory::NIGHTMODE :
+                            currentMenuLevel = MenuLevel::MENU;
+                            break;
+
+                        case MenuCategory::SETTINGS :
+                        case MenuCategory::EFFECTS :
+                            currentMenuLevel = MenuLevel::SELECTING;
+                            break;
+                        
+                        default:
+                            break;
+
+                    }
+                break;
+
+                case MenuLevel::SELECTING :
+                    switch(currentMenuCategory) {
+                        case MenuCategory::EFFECTS :
+                        case MenuCategory::SETTINGS :
+                            currentMenuLevel = MenuLevel::MENU;
+                            break;
+
+                        default:
+                            break;
+                    }
+                    break;
+
+                case MenuLevel::MENU :
+                    currentMenuLevel = MenuLevel::HOME;
+                    break;
+
+
+
             }
+
         }
 
         //  DOUBLE PRESS
         else if (event == rotaryEncoder::ButtonEventType::DOUBLE_PRESS) {
-            if(currentMode == Rotary_Encoder_MODI::EFFECT_MODI){
-                currentMode = Rotary_Encoder_MODI::EFFECT_CONFIG_MODI;
-                Serial.printf("Encoder %d: Switched to EFFECT CONFIG\n", encoderIndex);
-            }
-            else if(currentMode == Rotary_Encoder_MODI::EFFECT_CONFIG_MODI || 
-                    currentMode == Rotary_Encoder_MODI::EFFECT_CONFIG_SELECTED_MODI) {
-                currentMode = Rotary_Encoder_MODI::EFFECT_MODI;
-                Serial.printf("Encoder %d: Looped back to EFFECT\n", encoderIndex);
+            if(currentMenuLevel != MenuLevel::OFF) {
+                currentMenuLevel = MenuLevel::HOME;
             }
         }
 
         // ROTATION LOGIC
         if (delta != 0) {
 
-            if (currentMode == Rotary_Encoder_MODI::BRIGHTNESS_MODI) {
-                setSegmentBrightness(segID, delta); 
-                Serial.printf("Encoder %d: Brightness delta %d applied to seg %d\n", encoderIndex, delta, segID);
-            }
-            else if (currentMode == Rotary_Encoder_MODI::EFFECT_MODI) {
-                setSegmentEffect(segID, delta);
-            }
-            else if (currentMode == Rotary_Encoder_MODI::EFFECT_CONFIG_MODI) {
-                cycleEffectConfig(encoderIndex, delta);
-            }
-            else if (currentMode == Rotary_Encoder_MODI::EFFECT_CONFIG_SELECTED_MODI) {
-                setSegmentEffectConfig(segID, static_cast<int8_t>(encoderConfigs[encoderIndex]), delta);
+            switch(currentMenuLevel) {
+                case MenuLevel::HOME :
+                    setSegmentBrightness(segID, delta);
+                    break;
+
+                case MenuLevel::MENU :
+                    cycleEnum(encoderMenuCategory[encoderIndex], delta);
+                    break;
+
+                case MenuLevel::SELECTING :
+                    switch(currentMenuCategory) {
+                        case MenuCategory::EFFECTS :
+                            setSegmentEffect(segID, delta);
+                            break;
+
+                        case MenuCategory::SETTINGS :
+                            cycleEnum(encoderSettingsMenu[encoderIndex], delta);
+                            break;
+
+                        default:
+                            break;
+
+                    }
+                    break;
+
+                case MenuLevel::EDITING :
+                    switch(currentMenuCategory) {
+                        case MenuCategory::EFFECTS :
+                            setSegmentEffectConfig(segID, static_cast<int8_t>(encoderConfigs[encoderIndex]), delta);
+                            break;
+
+                        case MenuCategory::SUNRISE :
+                            //do something
+                            break;
+
+                        case MenuCategory::SETTINGS :
+                            //do something
+                            break;
+
+                        case MenuCategory::NIGHTMODE :
+                            //do something
+                            break;
+
+                        default:
+                            break;
+
+                    }
+                    break;
+
+                default:
+                    break;
+
             }
         }
 // --- DISPLAY UPDATE ---
@@ -237,8 +354,8 @@ private:
             extractModeName(absoluteValue, JSON_mode_names, lineBuffer, 63);
         }
         // 2. If looking at configs, grab the specific Slider Name!
-        else if (currentMode == Rotary_Encoder_MODI::EFFECT_CONFIG_MODI || 
-                 currentMode == Rotary_Encoder_MODI::EFFECT_CONFIG_SELECTED_MODI) {
+        else if (currentMode == Rotary_Encoder_MODI::EFFECT_SELECT_SLIDERS_MODI || 
+                 currentMode == Rotary_Encoder_MODI::EFFECT_ADJUST_SLIDERS_MODI) {
                  
             if (encoderConfigs[encoderIndex] == selectedEffectConfig::OPACITY) {
                 snprintf(lineBuffer, 63, "Opacity");
@@ -271,8 +388,8 @@ private:
                 return seg.opacity;
             case Rotary_Encoder_MODI::EFFECT_MODI: 
                 return seg.mode;
-            case Rotary_Encoder_MODI::EFFECT_CONFIG_MODI:
-            case Rotary_Encoder_MODI::EFFECT_CONFIG_SELECTED_MODI:
+            case Rotary_Encoder_MODI::EFFECT_SELECT_SLIDERS_MODI:
+            case Rotary_Encoder_MODI::EFFECT_ADJUST_SLIDERS_MODI:
                 switch(config) {
                     case selectedEffectConfig::SPEED: return seg.speed;
                     case selectedEffectConfig::INTENSITY: return seg.intensity;

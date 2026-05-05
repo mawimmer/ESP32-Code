@@ -102,6 +102,9 @@ public:
         Serial.printf("[Mock] Hole Segment ID: %d\r\n", id);
         return dummySegment;
     }
+    int getModeCount() {
+        return 10;
+    }
 };
 
 extern Strip strip;
@@ -135,4 +138,6 @@ extern int JSON_mode_names;
 inline void extractModeName(int effect,int JSON_mode_names ,char* effectName,int a) {
     Serial.printf("[Mock] JSON_mode_names\r\n");
 }
-
+inline void extractModeSlider(int effect,int JSON_mode_names ,char* effectName,int a) {
+    Serial.printf("[Mock] JSON_mode_names\r\n");
+}
