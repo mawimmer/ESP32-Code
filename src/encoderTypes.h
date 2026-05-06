@@ -1,14 +1,5 @@
 #pragma once
 
-// enum class Rotary_Encoder_MODI {
-//     BRIGHTNESS_MODI,
-//     EFFECT_MODI,
-//     EFFECT_SELECT_SLIDERS_MODI,
-//     EFFECT_ADJUST_SLIDERS_MODI,
-//     TOGGLED_OFF,
-//     _COUNT
-// };
-
 enum class MenuLevel {
     OFF,
     HOME,
@@ -18,6 +9,15 @@ enum class MenuLevel {
     EDITING,
     _COUNT
 };
+inline const char* LevelNames[] = {
+    "OFF",
+    "Brightness",
+    "Menu",
+    "SubMenu 1",
+    "SubMenu 2",
+    "Editing"
+};
+
 
 enum class MenuCategory {
     NIGHTMODE,
@@ -26,11 +26,22 @@ enum class MenuCategory {
     SETTINGS,
     _COUNT
 };
+inline const char* CategoryNames[] = {
+    "Nightmode",
+    "Sunrise",
+    "Effects",
+    "Settings"
+};
+
 
 enum class SettingsMenu {
     DESIGN,
     ENCODER,
     _COUNT
+};
+inline const char* SettingsNames[] = {
+    "Design",
+    "Encoder"
 };
 
 enum class EffectSlider {

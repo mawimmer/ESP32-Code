@@ -72,7 +72,7 @@ struct Segment {
     uint8_t custom3 = 0;
 
 
-    bool isOn = true; 
+    bool isOn = false; 
     
     void setOption(uint8_t option, bool value) {
             if (option == SEG_OPTION_ON) {
