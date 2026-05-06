@@ -13,7 +13,8 @@ enum class MenuLevel {
     OFF,
     HOME,
     MENU,
-    SELECTING,
+    SELECTING_L1,
+    SELECTING_L2,
     EDITING,
     _COUNT
 };
@@ -32,7 +33,7 @@ enum class SettingsMenu {
     _COUNT
 };
 
-enum class selectedEffectConfig {
+enum class EffectSlider {
     SPEED,
     INTENSITY,
     OPACITY,

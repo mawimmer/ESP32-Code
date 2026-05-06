@@ -47,7 +47,7 @@ private:
     MenuLevel encoderMenuLevel[4];
     MenuCategory encoderMenuCategory[4];
     SettingsMenu encoderSettingsMenu[4];
-    selectedEffectConfig encoderConfigs[4];
+    EffectSlider encoderEffectSlider[4];
     int8_t encoderSegments[4];
 
     // --- CONFIG VARIABLES ---
@@ -117,7 +117,7 @@ private:
     }
 
     void cycleEffectConfig(int encoderIndex, int delta) {
-        int current = static_cast<int>(encoderConfigs[encoderIndex]);
+        int current = static_cast<int>(encoderEffectSlider[encoderIndex]);
         int8_t segID = encoderSegments[encoderIndex];
         int effectID = strip.getSegment(segID).mode;
 
@@ -129,21 +129,21 @@ private:
             if (current > 5) current = 0;
             if (current < 0) current = 5;
 
-            selectedEffectConfig newConfig = static_cast<selectedEffectConfig>(current);
+            EffectSlider newConfig = static_cast<EffectSlider>(current);
 
             // Opacity is a segment setting, so it is ALWAYS valid.
-            if (newConfig == selectedEffectConfig::OPACITY) {
-                encoderConfigs[encoderIndex] = newConfig;
+            if (newConfig == EffectSlider::OPACITY) {
+                encoderEffectSlider[encoderIndex] = newConfig;
                 return;
             }
 
             // Map our enum to WLED's internal slider IDs
             uint8_t sliderIndex = 0;
-            if (newConfig == selectedEffectConfig::SPEED) sliderIndex = 0;
-            else if (newConfig == selectedEffectConfig::INTENSITY) sliderIndex = 1;
-            else if (newConfig == selectedEffectConfig::CUSTOM1) sliderIndex = 2;
-            else if (newConfig == selectedEffectConfig::CUSTOM2) sliderIndex = 3;
-            else if (newConfig == selectedEffectConfig::CUSTOM3) sliderIndex = 4;
+            if (newConfig == EffectSlider::SPEED) sliderIndex = 0;
+            else if (newConfig == EffectSlider::INTENSITY) sliderIndex = 1;
+            else if (newConfig == EffectSlider::CUSTOM1) sliderIndex = 2;
+            else if (newConfig == EffectSlider::CUSTOM2) sliderIndex = 3;
+            else if (newConfig == EffectSlider::CUSTOM3) sliderIndex = 4;
 
             // Ask WLED what this slider is called for the current effect
             char sliderName[32] = {0};
@@ -151,7 +151,7 @@ private:
 
             // If WLED returns a real name (and not '!' which means unused), lock it in!
             if (sliderName[0] != '\0' && sliderName[0] != '!') {
-                encoderConfigs[encoderIndex] = newConfig;
+                encoderEffectSlider[encoderIndex] = newConfig;
                 return;
             }
         }
@@ -192,11 +192,11 @@ private:
                 case MenuLevel::MENU :
                     switch(currentMenuCategory) {
                         case MenuCategory::EFFECTS :
-                            currentMenuLevel = MenuLevel::SELECTING;
+                            currentMenuLevel = MenuLevel::SELECTING_L1;
                             break;
 
                         case MenuCategory::SETTINGS :
-                            currentMenuLevel = MenuLevel::SELECTING;
+                            currentMenuLevel = MenuLevel::SELECTING_L1;
                             break;
 
                         case MenuCategory::NIGHTMODE :
@@ -213,7 +213,7 @@ private:
                 break;
 
                 
-                case MenuLevel::SELECTING :
+                case MenuLevel::SELECTING_L1 :
                     switch(currentMenuCategory) {
                         case MenuCategory::EFFECTS :
                             currentMenuLevel = MenuLevel::EDITING;
@@ -249,7 +249,7 @@ private:
 
                         case MenuCategory::SETTINGS :
                         case MenuCategory::EFFECTS :
-                            currentMenuLevel = MenuLevel::SELECTING;
+                            currentMenuLevel = MenuLevel::SELECTING_L1;
                             break;
                         
                         default:
@@ -258,7 +258,7 @@ private:
                     }
                 break;
 
-                case MenuLevel::SELECTING :
+                case MenuLevel::SELECTING_L1 :
                     switch(currentMenuCategory) {
                         case MenuCategory::EFFECTS :
                         case MenuCategory::SETTINGS :
@@ -299,7 +299,7 @@ private:
                     cycleEnum(encoderMenuCategory[encoderIndex], delta);
                     break;
 
-                case MenuLevel::SELECTING :
+                case MenuLevel::SELECTING_L1 :
                     switch(currentMenuCategory) {
                         case MenuCategory::EFFECTS :
                             setSegmentEffect(segID, delta);
@@ -318,7 +318,7 @@ private:
                 case MenuLevel::EDITING :
                     switch(currentMenuCategory) {
                         case MenuCategory::EFFECTS :
-                            setSegmentEffectConfig(segID, static_cast<int8_t>(encoderConfigs[encoderIndex]), delta);
+                            setSegmentEffectConfig(segID, static_cast<int8_t>(encoderEffectSlider[encoderIndex]), delta);
                             break;
 
                         case MenuCategory::SUNRISE :
@@ -344,66 +344,229 @@ private:
 
             }
         }
+    }
+    
 // --- DISPLAY UPDATE ---
-        int16_t absoluteValue = getCurrentSegmentValue(segID, currentMode, encoderConfigs[encoderIndex]);
 
-        char lineBuffer[64] = {0}; 
+    void updateDisplay(int encoderIndex) {
+        MenuLevel level = encoderMenuLevel[encoderIndex];
+        MenuCategory category = encoderMenuCategory[encoderIndex];
+
+        switch(level) {
+            case MenuLevel::HOME :
+                //draw home/brightness
+                break;
+
+            case MenuLevel::MENU :
+                //draw menu
+                break;
+            
+            case MenuLevel::SELECTING_L1 :
+                switch(category) {
+                    case MenuCategory::EFFECTS :
+                        //draw effects list
+                        break;
+
+                    case MenuCategory::SUNRISE :
+                        //draw sunrise settings
+                        break;
+                    
+                    case MenuCategory::NIGHTMODE :
+                        //draw nightmode settings
+                        break;
+
+                    case MenuCategory::SETTINGS :
+                        //draw settings selection menu
+                        break;
+
+                    default:
+                        break;
+
+                }
+            break;
+
+            case MenuLevel::SELECTING_L2 :
+                switch(category) {
+                    case MenuCategory::EFFECTS :
+                        //draw effect sliders
+                        break;
+
+                    case MenuCategory::SUNRISE :
+                        //not reachable yet
+                        break;
+                    
+                    case MenuCategory::NIGHTMODE :
+                        //not reachable yet
+                        break;
+
+                    case MenuCategory::SETTINGS :
+                        //draw specific setting menu
+                        break;
+
+                    default:
+                        break;
+
+                }
+            break;
+
+            case MenuLevel::EDITING :
+                switch(category) {
+                    case MenuCategory::EFFECTS :
+                        //draw effect slider value
+                        break;
+
+                    case MenuCategory::SUNRISE :
+                        //not reachable yet
+                        break;
+                    
+                    case MenuCategory::NIGHTMODE :
+                        //not reachable yet
+                        break;
+
+                    case MenuCategory::SETTINGS :
+                        //draw specific setting menu
+                        break;
+
+                    default:
+                        break;
+
+                }
+                break;    
+
+            default:
+                break;
+
+        }
+    }
+
+        // --- gather info for drawDisplay ---
+
+        // OLD STUFF #####
+
+
+        // int16_t absoluteValue = getCurrentSegmentValue(segID, currentMode, encoderConfigs[encoderIndex]);
+
+        // char lineBuffer[64] = {0}; 
         
-        // 1. If looking at effects, grab the Effect Name
-        if (currentMode == Rotary_Encoder_MODI::EFFECT_MODI) {
-            extractModeName(absoluteValue, JSON_mode_names, lineBuffer, 63);
-        }
-        // 2. If looking at configs, grab the specific Slider Name!
-        else if (currentMode == Rotary_Encoder_MODI::EFFECT_SELECT_SLIDERS_MODI || 
-                 currentMode == Rotary_Encoder_MODI::EFFECT_ADJUST_SLIDERS_MODI) {
+        // // 1. If looking at effects, grab the Effect Name
+        // if (currentMode == Rotary_Encoder_MODI::EFFECT_MODI) {
+        //     extractModeName(absoluteValue, JSON_mode_names, lineBuffer, 63);
+        // }
+        // // 2. If looking at configs, grab the specific Slider Name!
+        // else if (currentMode == Rotary_Encoder_MODI::EFFECT_SELECT_SLIDERS_MODI || 
+        //          currentMode == Rotary_Encoder_MODI::EFFECT_ADJUST_SLIDERS_MODI) {
                  
-            if (encoderConfigs[encoderIndex] == selectedEffectConfig::OPACITY) {
-                snprintf(lineBuffer, 63, "Opacity");
-            } else {
-                uint8_t sliderIndex = 0;
-                if (encoderConfigs[encoderIndex] == selectedEffectConfig::SPEED) sliderIndex = 0;
-                else if (encoderConfigs[encoderIndex] == selectedEffectConfig::INTENSITY) sliderIndex = 1;
-                else if (encoderConfigs[encoderIndex] == selectedEffectConfig::CUSTOM1) sliderIndex = 2;
-                else if (encoderConfigs[encoderIndex] == selectedEffectConfig::CUSTOM2) sliderIndex = 3;
-                else if (encoderConfigs[encoderIndex] == selectedEffectConfig::CUSTOM3) sliderIndex = 4;
+        //     if (encoderConfigs[encoderIndex] == selectedEffectConfig::OPACITY) {
+        //         snprintf(lineBuffer, 63, "Opacity");
+        //     } else {
+        //         uint8_t sliderIndex = 0;
+        //         if (encoderConfigs[encoderIndex] == selectedEffectConfig::SPEED) sliderIndex = 0;
+        //         else if (encoderConfigs[encoderIndex] == selectedEffectConfig::INTENSITY) sliderIndex = 1;
+        //         else if (encoderConfigs[encoderIndex] == selectedEffectConfig::CUSTOM1) sliderIndex = 2;
+        //         else if (encoderConfigs[encoderIndex] == selectedEffectConfig::CUSTOM2) sliderIndex = 3;
+        //         else if (encoderConfigs[encoderIndex] == selectedEffectConfig::CUSTOM3) sliderIndex = 4;
                 
-                // Fetch the custom name directly from WLED's internal memory
-                extractModeSlider(strip.getSegment(segID).mode, sliderIndex, lineBuffer, 63);
+        //         // Fetch the custom name directly from WLED's internal memory
+        //         extractModeSlider(strip.getSegment(segID).mode, sliderIndex, lineBuffer, 63);
                 
-                // Capitalize the first letter for UI aesthetics
-                if(lineBuffer[0] >= 'a' && lineBuffer[0] <= 'z') lineBuffer[0] -= 32;
-            }
-        }
+        //         // Capitalize the first letter for UI aesthetics
+        //         if(lineBuffer[0] >= 'a' && lineBuffer[0] <= 'z') lineBuffer[0] -= 32;
+        //     }
+        // }
         
         // Pass it to the dumb printer!
-        oledDisplay.drawEncoderState(encoderIndex, segID, currentMode, encoderConfigs[encoderIndex], absoluteValue, lineBuffer);
-    }
+        //oledDisplay.drawEncoderState(encoderIndex, segID, currentMode, encoderConfigs[encoderIndex], absoluteValue, lineBuffer);
+    // }
 
-    // Safely reads the current value from WLED based on what mode we are in
-    int16_t getCurrentSegmentValue(int8_t segmentID, Rotary_Encoder_MODI mode, selectedEffectConfig config) {
-        Segment& seg = strip.getSegment(segmentID);
+    // get strings and values to draw
+
+    // int16_t getCurrentSegmentValue(int encoderIndex, int8_t segmentID, MenuLevel level, MenuCategory category, EffectSlider slider) {
+    //     Segment& seg = strip.getSegment(segmentID);
+
+    //     switch (level) {
+    //         case MenuLevel::HOME :
+    //             return seg.opacity;
+    //             break;
+
+    //         case MenuLevel::MENU :
+    //             default:
+    //                 break;
+
+    //         case MenuLevel::SELECTING_L1 :
+    //             switch (category) {
+    //                 case MenuCategory::EFFECTS :   
+    //                     extractModeName(absoluteValue, JSON_mode_names, lineBuffer, 63);
+    //                     break;
+    //                 case MenuCategory::NIGHTMODE :
+    //                     //get some values
+    //                     break;
+                    
+    //                 case MenuCategory::SUNRISE :
+    //                     //get some values
+    //                     break;
+
+    //                 case MenuCategory::SETTINGS :
+    //                     //get some values
+    //                     break;
+                
+    //                 default:
+    //                     break;
+    //             }
+    //         break;
+
+    //         case MenuLevel::SELECTING_L2 :
+    //             switch (category) {
+    //                 case MenuCategory::EFFECTS :
+    //                     getSliderName(encoderIndex, segmentID);
+    //                     break;
+                
+    //                 default:
+    //                     break;
+    //             }
+    //         break;
+
+    //         case MenuLevel::EDITING :
+    //             switch(category) {
+    //                 case MenuCategory::EFFECTS :
+    //                     switch(slider) {
+    //                         case EffectSlider::SPEED: return seg.speed;
+    //                         case EffectSlider::INTENSITY: return seg.intensity;
+    //                         case EffectSlider::OPACITY: return seg.opacity;
+    //                         case EffectSlider::CUSTOM1: return seg.custom1;
+    //                         case EffectSlider::CUSTOM2: return seg.custom2;
+    //                         case EffectSlider::CUSTOM3: return seg.custom3;
+    //                     }
+    //             }
+    //             break;
+
         
-        switch(mode) {
-            case Rotary_Encoder_MODI::BRIGHTNESS_MODI: 
-                return seg.opacity;
-            case Rotary_Encoder_MODI::EFFECT_MODI: 
-                return seg.mode;
-            case Rotary_Encoder_MODI::EFFECT_SELECT_SLIDERS_MODI:
-            case Rotary_Encoder_MODI::EFFECT_ADJUST_SLIDERS_MODI:
-                switch(config) {
-                    case selectedEffectConfig::SPEED: return seg.speed;
-                    case selectedEffectConfig::INTENSITY: return seg.intensity;
-                    case selectedEffectConfig::OPACITY: return seg.opacity;
-                    case selectedEffectConfig::CUSTOM1: return seg.custom1;
-                    case selectedEffectConfig::CUSTOM2: return seg.custom2;
-                    case selectedEffectConfig::CUSTOM3: return seg.custom3;
-                }
-                break;
-            default: 
-                return 0;
+    //         default:
+    //             break;
+    //     }
+
+    //     return 0;
+    // }
+    void getSliderName(int encoderIndex, int8_t segmentID) {
+                if (encoderEffectSlider[encoderIndex] == EffectSlider::OPACITY) {
+            snprintf(lineBuffer, 63, "Opacity");
+        } else {
+            uint8_t sliderIndex = 0;
+            if (encoderEffectSlider[encoderIndex] == EffectSlider::SPEED) sliderIndex = 0;
+            else if (encoderEffectSlider[encoderIndex] == EffectSlider::INTENSITY) sliderIndex = 1;
+            else if (encoderEffectSlider[encoderIndex] == EffectSlider::CUSTOM1) sliderIndex = 2;
+            else if (encoderEffectSlider[encoderIndex] == EffectSlider::CUSTOM2) sliderIndex = 3;
+            else if (encoderEffectSlider[encoderIndex] == EffectSlider::CUSTOM3) sliderIndex = 4;
+            
+            // Fetch the custom name directly from WLED's internal memory
+            extractModeSlider(strip.getSegment(segmentID).mode, sliderIndex, lineBuffer, 63);
+            
+            // Capitalize the first letter for UI aesthetics
+            if(lineBuffer[0] >= 'a' && lineBuffer[0] <= 'z') lineBuffer[0] -= 32;
         }
-        return 0;
     }
+        /**hand over state and values to know what to draw*/
+    void drawDisplay(int encoderIndex, int8_t segmentID, MenuLevel level, MenuCategory category, int value, const char* lineBuffer = nullptr);
+
 
 public:
     void setup() override {
