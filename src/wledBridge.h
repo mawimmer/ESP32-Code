@@ -103,6 +103,8 @@ private:
     void setEffectSliderValue(int8_t segmentID, int8_t configIndex, int8_t deltaValue) {
         Segment& seg = strip.getSegment(segmentID);
         int newValue;
+        int stepMultiplier = 3; 
+        deltaValue *= stepMultiplier;
         switch(configIndex) {
             case 0: newValue = seg.speed + deltaValue;     seg.speed = constrain(newValue, 0, 255); break;
             case 1: newValue = seg.intensity + deltaValue; seg.intensity = constrain(newValue, 0, 255); break;
@@ -114,6 +116,24 @@ private:
         }
         stateUpdated(CALL_MODE_BUTTON);
         //colorUpdated(CALL_MODE_BUTTON);
+    }
+
+    int getActiveSilderValue(int encoderIndex) {
+
+        int8_t segID = encoderSegments[encoderIndex];
+        Segment& seg = strip.getSegment(segID);
+        EffectSlider activeSlider = encoderEffectSlider[encoderIndex];
+
+        switch(activeSlider) {
+            case EffectSlider::SPEED:     return seg.speed;
+            case EffectSlider::INTENSITY: return seg.intensity;
+            case EffectSlider::OPACITY:   return seg.opacity;
+            case EffectSlider::CUSTOM1:   return seg.custom1;
+            case EffectSlider::CUSTOM2:   return seg.custom2;
+            case EffectSlider::CUSTOM3:   return seg.custom3;
+            default: return 0;
+        }
+
     }
 
     void cycleEffectConfig(int encoderIndex, int delta) {
@@ -189,6 +209,7 @@ private:
             switch(currentMenuLevel) {
                 case MenuLevel::OFF :
                     currentMenuLevel = MenuLevel::HOME;
+                    toggleSegment(segID);
                     break;
 
                 case MenuLevel::HOME :
@@ -227,6 +248,21 @@ private:
 
                         case MenuCategory::SETTINGS:
                             currentMenuLevel = MenuLevel::SELECTING_L2;
+                            break;
+
+                        default:
+                            break;
+                    }
+                break;
+
+                case MenuLevel::SELECTING_L2 :
+                    switch(currentMenuCategory) {
+                        case MenuCategory::EFFECTS :
+                            currentMenuLevel = MenuLevel::EDITING;
+                            break;
+
+                        case MenuCategory::SETTINGS:
+                            currentMenuLevel = MenuLevel::EDITING;
                             break;
 
                         default:
@@ -389,13 +425,15 @@ private:
 // --- DISPLAY UPDATE ---
 
     void updateDisplay(int encoderIndex) {
+        int segID = encoderSegments[encoderIndex];
+        Segment& segment = strip.getSegment(segID);
         MenuLevel level = encoderMenuLevel[encoderIndex];
         MenuCategory category = encoderMenuCategory[encoderIndex];
 
         switch(level) {
             case MenuLevel::HOME :{
                 const char* sliderName = LevelNames[static_cast<int>(level)];
-                oledDisplay.renderSliderScreen(sliderName, 100, 0, 100, "left", "right", "turn");
+                oledDisplay.renderSliderScreen(sliderName, strip.getSegment(segID).opacity, 0, 100, "OFF", "Menu", nullptr);
                 //draw home/brightness
                 break;
             }
@@ -404,7 +442,7 @@ private:
 
             case MenuLevel::MENU : {
                 const char* sliderName = CategoryNames[static_cast<int>(category)];
-                oledDisplay.renderSelectionScreen(sliderName, nullptr, nullptr, "Click: Enter");
+                oledDisplay.renderSelectionScreen(sliderName, "Home", "Select", nullptr);
                 //draw menu
                 break;
             }
@@ -412,23 +450,27 @@ private:
             
             case MenuLevel::SELECTING_L1 :
                 switch(category) {
-                    case MenuCategory::EFFECTS :
-                        oledDisplay.renderSelectionScreen("EFFECTS_L1", "Long: Back", nullptr, "Click: Enter");
+                    case MenuCategory::EFFECTS : {
+                        int currentMode = segment.mode;
+                        extractModeName(currentMode, JSON_mode_names, lineBuffer, 63);
+                        oledDisplay.renderSelectionScreen(lineBuffer, "Return", "Select", nullptr);
                         //draw effects list
                         break;
+                    }
+
 
                     case MenuCategory::SUNRISE :
-                        oledDisplay.renderSelectionScreen("SUNRISE_L1", "Long: Back", nullptr, "Click: Enter");
+                        oledDisplay.renderSelectionScreen("SUNRISE_L1", "Return", "Select", nullptr);
                         //draw sunrise settings
                         break;
                     
                     case MenuCategory::NIGHTMODE :
-                        oledDisplay.renderSelectionScreen("NIGHTMODE_L1", "Long: Back", nullptr, "Click: Enter");
+                        oledDisplay.renderSelectionScreen("NIGHTMODE_L1", "Return", "Select", nullptr);
                         //draw nightmode settings
                         break;
 
                     case MenuCategory::SETTINGS :
-                        oledDisplay.renderSelectionScreen("SETTINGS_L1", "Long: Back", nullptr, "Click: Enter");
+                        oledDisplay.renderSelectionScreen("SETTINGS_L1", "Return", "Select", nullptr);
                         //draw settings selection menu
                         break;
 
@@ -441,22 +483,23 @@ private:
             case MenuLevel::SELECTING_L2 :
                 switch(category) {
                     case MenuCategory::EFFECTS :
-                        oledDisplay.renderSelectionScreen("EFFECTS_L2", "Long: Back", nullptr, "Click: Enter");
+                        getSliderName(encoderIndex);
+                        oledDisplay.renderSelectionScreen(lineBuffer, "Return", "Select", nullptr);
                         //draw effect sliders
                         break;
 
                     case MenuCategory::SUNRISE :
-                        oledDisplay.renderSelectionScreen("SUNRISE_L2", "Long: Back", nullptr, "Click: Enter");
+                        oledDisplay.renderSelectionScreen("SUNRISE_L2", "Return", "Select", nullptr);
                         //not reachable yet
                         break;
                     
                     case MenuCategory::NIGHTMODE :
-                        oledDisplay.renderSelectionScreen("NIGHTMODE_L2", "Long: Back", nullptr, "Click: Enter");
+                        oledDisplay.renderSelectionScreen("NIGHTMODE_L2", "Return", "Select", nullptr);
                         //not reachable yet
                         break;
 
                     case MenuCategory::SETTINGS :
-                        oledDisplay.renderSelectionScreen("SETTINGS_L2", "Long: Back", nullptr, "Click: Enter");
+                        oledDisplay.renderSelectionScreen("SETTINGS_L2", "Return", "Select", nullptr);
                         //draw specific setting menu
                         break;
 
@@ -469,6 +512,8 @@ private:
             case MenuLevel::EDITING :
                 switch(category) {
                     case MenuCategory::EFFECTS :
+                        getSliderName(encoderIndex);
+                        oledDisplay.renderSliderScreen(lineBuffer, getActiveSilderValue(encoderIndex), 0, 100, "Return", nullptr, "Adjust");
                         //draw effect slider value
                         break;
 
@@ -502,8 +547,9 @@ private:
 
     char lineBuffer[64] = {0};
 
-    void getSliderName(int encoderIndex, int8_t segmentID) {
-                if (encoderEffectSlider[encoderIndex] == EffectSlider::OPACITY) {
+    void getSliderName(int encoderIndex) {
+            int8_t segmentID = encoderSegments[encoderIndex];
+            if (encoderEffectSlider[encoderIndex] == EffectSlider::OPACITY) {
             snprintf(lineBuffer, 63, "Opacity");
         } else {
             uint8_t sliderIndex = 0;
