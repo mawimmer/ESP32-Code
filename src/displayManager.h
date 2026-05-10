@@ -112,19 +112,19 @@ public:
         display.println(">");
         display.setTextSize(2);
         display.setTextColor(SSD1306_WHITE);
-        int len = (128 - strlen(lineBuffer)) / 2;
+        int len = (128 - strlen(lineBuffer) * 10) / 2;
         display.setCursor(len ,28);
         display.println(lineBuffer);
     }
 
 
-    void renderSliderScreen(const char* sliderName, int currentValue, 
+    void renderSliderScreen(const char* sliderName, int currentValue,int maxMap,  
                             int minVal, int maxVal, const char* leftHint, 
                             const char* rightHint, const char* turnHint)
     {
         display.clearDisplay();
         display.drawBitmap(0, 0, BrightnessSymbol, 64, 32, SSD1306_WHITE);
-        drawSlider(currentValue, minVal, maxVal);
+        drawSlider(currentValue, maxMap, minVal, maxVal);
         drawNavHint(leftHint, rightHint, turnHint);
         display.display();
     }
@@ -138,8 +138,8 @@ public:
         display.display();
     }
 
-    void drawSlider(int currentValue, int minVal, int maxVal) {
-            int progress = map(currentValue, 0, 255, 0, 100);
+    void drawSlider(int currentValue,int maxMap, int minVal, int maxVal) {
+            int progress = map(currentValue, 0, maxMap, 0, 100);
             display.drawLine(0, 25, 100, 25, SSD1306_WHITE);
             display.fillCircle(progress,25,4,SSD1306_BLACK);
             display.fillCircle(progress,25,3,SSD1306_WHITE);

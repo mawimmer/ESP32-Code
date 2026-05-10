@@ -49,6 +49,7 @@ private:
     SettingsMenu encoderSettingsMenu[4];
     EffectSlider encoderEffectSlider[4];
     int8_t encoderSegments[4];
+    int uiPercent[4] = {50, 50, 50, 50};
 
     // --- CONFIG VARIABLES ---
     bool enabled = true;
@@ -73,14 +74,21 @@ private:
         stateUpdated(CALL_MODE_BUTTON);
     }
 
-    void setSegmentBrightness(int8_t segmentID, int delta) {
+    void setSegmentBrightness(int encoderIndex, int8_t segmentID, int delta) {
         Segment& seg = strip.getSegment(segmentID);
-        float norm = (float)seg.opacity / 255.0f;
-        float factor = 0.1f + 1.5f * norm * norm;
-        int32_t step = 1 + (int32_t)(factor * 20);
+        uiPercent[encoderIndex] += delta;
+        uiPercent[encoderIndex] = constrain(uiPercent[encoderIndex], 1 , 100);
+        float norm = (uiPercent[encoderIndex] / 100.0f);
+        seg.opacity = 255 * norm * norm;
+        Serial.println(seg.opacity);
+        Serial.println(uiPercent[encoderIndex]);
+
+        // float norm = (float)seg.opacity / 255.0f;
+        // float factor = 0.1f + 1.5f * norm * norm;
+        // int32_t step = 1 + (int32_t)(factor * 20);
         
-        int32_t change = delta * step;
-        seg.opacity = constrain(seg.opacity + change, 1, 255);
+        // int32_t change = delta * step;
+        // seg.opacity = constrain(seg.opacity + change, 1, 255);
         stateUpdated(CALL_MODE_BUTTON);
         
         static unsigned long lastUIUpdate = 0;
@@ -344,7 +352,7 @@ private:
 
             switch(currentMenuLevel) {
                 case MenuLevel::HOME :
-                    setSegmentBrightness(segID, delta);
+                    setSegmentBrightness(encoderIndex ,segID, delta);
                     break;
 
                 case MenuLevel::MENU :
@@ -433,7 +441,7 @@ private:
         switch(level) {
             case MenuLevel::HOME :{
                 const char* sliderName = LevelNames[static_cast<int>(level)];
-                oledDisplay.renderSliderScreen(sliderName, strip.getSegment(segID).opacity, 0, 100, "OFF", "Menu", nullptr);
+                oledDisplay.renderSliderScreen(sliderName, uiPercent[encoderIndex], 100, 0, 100, "OFF", "Menu", nullptr);
                 //draw home/brightness
                 break;
             }
