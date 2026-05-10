@@ -74,28 +74,34 @@ private:
         stateUpdated(CALL_MODE_BUTTON);
     }
 
+    void syncFromWLED(int encoderIndex, int segId) {
+        Segment& seg = strip.getSegment(segId);
+
+        uiPercent[encoderIndex] = round(100.0f * sqrt(seg.opacity / 255.0f));
+    }
+
+    inline void stateUpdated(uint8_t callMode) {
+        Serial.printf("[Mock] stateUpdated(callMode=%d)\r\n", callMode);
+
+        for (int i = 0; i < 4; i++) {
+            syncFromWLED(i, 0);
+        }
+    }
     void setSegmentBrightness(int encoderIndex, int8_t segmentID, int delta) {
         Segment& seg = strip.getSegment(segmentID);
-        uiPercent[encoderIndex] += delta;
-        uiPercent[encoderIndex] = constrain(uiPercent[encoderIndex], 1 , 100);
-        float norm = (uiPercent[encoderIndex] / 100.0f);
-        seg.opacity = 255 * norm * norm;
+
+        uiPercent[encoderIndex] += delta * 2;
+        uiPercent[encoderIndex] = constrain(uiPercent[encoderIndex], 1, 100);
+
+        float norm = uiPercent[encoderIndex] / 100.0f;
+
+        float gamma = 1.7f;
+        float curved = pow(norm, gamma);
+
+        seg.opacity = constrain((uint8_t)(255.0f * curved), 1, 255);
+
         Serial.println(seg.opacity);
         Serial.println(uiPercent[encoderIndex]);
-
-        // float norm = (float)seg.opacity / 255.0f;
-        // float factor = 0.1f + 1.5f * norm * norm;
-        // int32_t step = 1 + (int32_t)(factor * 20);
-        
-        // int32_t change = delta * step;
-        // seg.opacity = constrain(seg.opacity + change, 1, 255);
-        stateUpdated(CALL_MODE_BUTTON);
-        
-        static unsigned long lastUIUpdate = 0;
-        if (millis() - lastUIUpdate > 250) {
-            updateInterfaces(CALL_MODE_BUTTON);
-            lastUIUpdate = millis();
-        }
     }
 
     void setSegmentEffect(int8_t segmentID, int delta) {
@@ -521,7 +527,7 @@ private:
                 switch(category) {
                     case MenuCategory::EFFECTS :
                         getSliderName(encoderIndex);
-                        oledDisplay.renderSliderScreen(lineBuffer, getActiveSilderValue(encoderIndex), 0, 100, "Return", nullptr, "Adjust");
+                        oledDisplay.renderSliderScreen(lineBuffer, getActiveSilderValue(encoderIndex), 255, 0, 100, "Return", nullptr, "Adjust");
                         //draw effect slider value
                         break;
 
