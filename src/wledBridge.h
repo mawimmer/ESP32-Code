@@ -50,6 +50,7 @@ private:
     EffectSlider encoderEffectSlider[4];
     int8_t encoderSegments[4];
     int uiPercent[4] = {50, 50, 50, 50};
+    bool needsUpdate[4] = {false, false, false, false};
 
     // --- CONFIG VARIABLES ---
     bool enabled = true;
@@ -71,7 +72,7 @@ private:
         Segment& seg = strip.getSegment(segmentID);
 
         seg.setOption(SEG_OPTION_ON, !seg.getOption(SEG_OPTION_ON));
-        stateUpdated(CALL_MODE_BUTTON);
+        stateUpdated(CALL_MODE_DIRECT_CHANGE);
     }
 
     void syncFromWLED(int encoderIndex, int segId) {
@@ -80,11 +81,13 @@ private:
         uiPercent[encoderIndex] = round(100.0f * sqrt(seg.opacity / 255.0f));
     }
 
-    inline void stateUpdated(uint8_t callMode) {
-        Serial.printf("[Mock] stateUpdated(callMode=%d)\r\n", callMode);
+    void onStateChange(uint8_t mode) override {
+        Serial.printf("stateUpdated(callMode=%d)\r\n", mode);
 
         for (int i = 0; i < 4; i++) {
             syncFromWLED(i, 0);
+            // needsUpdate[i] = true;
+            // updateDisplay(i);
         }
     }
     void setSegmentBrightness(int encoderIndex, int8_t segmentID, int delta) {
@@ -110,8 +113,8 @@ private:
         int newMode = constrain(seg.mode + delta, 0, MAXEFFECTID); // Adjust upper bound based on actual WLED effect count
         seg.setMode(newMode);
         //colorUpdated(CALL_MODE_BUTTON); 
-        stateUpdated(CALL_MODE_BUTTON);
-        updateInterfaces(CALL_MODE_BUTTON);
+        stateUpdated(CALL_MODE_DIRECT_CHANGE);
+        //updateInterfaces(CALL_MODE_BUTTON);
     }
 
     void setEffectSliderValue(int8_t segmentID, int8_t configIndex, int8_t deltaValue) {
@@ -128,8 +131,8 @@ private:
             case 5: newValue = seg.custom3 + deltaValue;   seg.custom3 = constrain(newValue, 0, 255); break;
             default: return;
         }
-        stateUpdated(CALL_MODE_BUTTON);
-        //colorUpdated(CALL_MODE_BUTTON);
+        //stateUpdated(CALL_MODE_BUTTON);
+        stateUpdated(CALL_MODE_DIRECT_CHANGE);
     }
 
     int getActiveSilderValue(int encoderIndex) {
@@ -439,6 +442,7 @@ private:
 // --- DISPLAY UPDATE ---
 
     void updateDisplay(int encoderIndex) {
+        needsUpdate[encoderIndex] = false;
         int segID = encoderSegments[encoderIndex];
         Segment& segment = strip.getSegment(segID);
         MenuLevel level = encoderMenuLevel[encoderIndex];
@@ -527,7 +531,7 @@ private:
                 switch(category) {
                     case MenuCategory::EFFECTS :
                         getSliderName(encoderIndex);
-                        oledDisplay.renderSliderScreen(lineBuffer, getActiveSilderValue(encoderIndex), 255, 0, 100, "Return", nullptr, "Adjust");
+                        oledDisplay.renderSliderScreen(lineBuffer, getActiveSilderValue(encoderIndex), 255, 0, 100, "Return", nullptr, nullptr);
                         //draw effect slider value
                         break;
 
@@ -550,7 +554,7 @@ private:
                 break;
                 
             case MenuLevel::OFF :
-                oledDisplay.renderSelectionScreen("SEGMENT OFF", nullptr, nullptr, "Click: Turn On");
+                oledDisplay.renderStaticScreen("Segment OFF", "On", nullptr, nullptr);
 
             default:
                 break;

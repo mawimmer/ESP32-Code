@@ -112,7 +112,7 @@ public:
         display.println(">");
         display.setTextSize(2);
         display.setTextColor(SSD1306_WHITE);
-        int len = (128 - strlen(lineBuffer) * 10) / 2;
+        int len = (128 - strlen(lineBuffer) * 12) / 2;
         display.setCursor(len ,28);
         display.println(lineBuffer);
     }
@@ -123,7 +123,7 @@ public:
                             const char* rightHint, const char* turnHint)
     {
         display.clearDisplay();
-        display.drawBitmap(0, 0, BrightnessSymbol, 64, 32, SSD1306_WHITE);
+        display.drawBitmap(30, 0, BrightnessSymbol, 64, 32, SSD1306_WHITE);
         drawSlider(currentValue, maxMap, minVal, maxVal);
         drawNavHint(leftHint, rightHint, turnHint);
         display.display();
@@ -140,12 +140,23 @@ public:
 
     void drawSlider(int currentValue,int maxMap, int minVal, int maxVal) {
             int progress = map(currentValue, 0, maxMap, 0, 100);
-            display.drawLine(0, 25, 100, 25, SSD1306_WHITE);
-            display.fillCircle(progress,25,4,SSD1306_BLACK);
-            display.fillCircle(progress,25,3,SSD1306_WHITE);
-            display.setCursor(105, 24);
+            int ySlider = 29;
+            int yText = 28;
+            display.drawLine(0, ySlider, 100, ySlider, SSD1306_WHITE);
+            display.fillCircle(progress,ySlider,4,SSD1306_BLACK);
+            display.fillCircle(progress,ySlider,3,SSD1306_WHITE);
+            display.setCursor(104, yText);
             display.setTextSize(1);
             display.printf("%d%%", progress);
+    }
+
+    void renderStaticScreen(const char* text, const char* leftHint, const char* rightHint, const char* turnHint) {
+        display.clearDisplay();
+        int len = (128 - strlen(text) * 12) / 2;
+        display.setCursor(len ,28);
+        display.println(text);
+        drawNavHint(leftHint, rightHint, turnHint);
+        display.display();
     }
 
     void animate() {
