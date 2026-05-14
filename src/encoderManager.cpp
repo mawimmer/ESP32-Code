@@ -22,7 +22,7 @@ inline void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt) {
         .lctrl_mode = PCNT_MODE_REVERSE,
         .hctrl_mode = PCNT_MODE_KEEP,
         .pos_mode = PCNT_COUNT_INC,
-        .neg_mode = PCNT_COUNT_DEC,
+        .neg_mode = PCNT_COUNT_DIS,
         .counter_h_lim = PCNT_LIMIT_HIGH,
         .counter_l_lim = PCNT_LIMIT_LOW,
         .unit = unit,

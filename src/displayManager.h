@@ -139,7 +139,9 @@ public:
     }
 
     void drawSlider(float currentValue,int maxMap, int minVal, int maxVal) {
-            int progress = map(currentValue, 0.0f, maxMap, 0, 100);
+            float percentage = (currentValue / (float)maxMap) * 100.0f;
+            //int progress = map(currentValue, 0.0f, maxMap, 0, 100);
+            int progress = (int)percentage;
             int ySlider = 29;
             int yText = 28;
             display.drawLine(0, ySlider, 100, ySlider, SSD1306_WHITE);
@@ -270,76 +272,5 @@ public:
         display.display();
     }
 
-    // A clean, generic function for the Bridge to call
-    // void drawEncoderState(int encoderIndex, int8_t segmentID, Rotary_Encoder_MODI mode, selectedEffectConfig config, int16_t value, const char* effectName = nullptr) {
-    //     if (!isInitialized) return;
-
-    //     display.clearDisplay();
-    //     display.setCursor(0,0);
-    //     display.setTextSize(1);
-
-    //     // 1. Draw Header
-    //     display.printf("Encoder %d -> Seg %d\n", encoderIndex, segmentID);
-    //     display.drawLine(0, 10, 128, 10, SSD1306_WHITE);
-
-    //     // 2. Draw Mode & Values
-    //     display.setCursor(0, 15);
-    //     display.setTextSize(2);
-
-    //     switch(mode) {
-    //         case Rotary_Encoder_MODI::TOGGLED_OFF:
-    //             //display.println("OFF");
-    //             animate ();
-    //             //plotCurve ();
-    //             break;
-                
-    //         case Rotary_Encoder_MODI::BRIGHTNESS_MODI: {
-    //             // display.println("BRIGHT:");
-    //             // display.setCursor(0, 35);
-    //             // display.printf("%d/255\n", value); // Draw the absolute brightness
-    //             int barWidth = map(value, 0, 255, 0, 100);
-    //             display.fillRect(0, 45, barWidth, 1, SSD1306_WHITE);
-    //             display.fillCircle(barWidth, 45, 5, SSD1306_BLACK);
-    //             display.fillCircle(barWidth, 45, 3, SSD1306_WHITE);
-    //             display.setCursor(103, 45);
-    //             display.setTextSize(1);
-    //             display.printf("%% %d\n", barWidth);
-    //             break;
-                
-    //         } 
-    //         case Rotary_Encoder_MODI::EFFECT_MODI:
-    //             display.println("EFFECT:");
-    //             display.setCursor(0, 35);
-    //             if (effectName != nullptr && effectName[0] != '\0') {
-    //                 display.printf("%s\n", effectName); 
-    //             } else {
-    //                 display.printf("ID: %d\n", value); // Fallback just in case
-    //             }
-    //             break;   
-    //         case Rotary_Encoder_MODI::EFFECT_SELECT_SLIDERS_MODI:
-    //         case Rotary_Encoder_MODI::EFFECT_ADJUST_SLIDERS_MODI:
-    //             display.setTextSize(1);
-    //             display.print("CONFIG:");
-                
-    //             display.setCursor(0, 25);
-    //             if (mode == Rotary_Encoder_MODI::EFFECT_SELECT_SLIDERS_MODI) display.print("> ");
-    //             else display.print("  ");
-
-    //             // Print the dynamic name we fetched from the WLED Bridge!
-    //             if (effectName != nullptr && effectName[0] != '\0') {
-    //                 display.println(effectName); 
-    //             } else {
-    //                 display.println("PARAMETER"); // Fallback
-    //             }
-                
-    //             display.setCursor(0, 40);
-    //             display.setTextSize(2);
-    //             if (mode == Rotary_Encoder_MODI::EFFECT_ADJUST_SLIDERS_MODI) display.print("> ");
-    //             display.printf("%d\n", value);
-    //             break;
-    //     }
-
-    //     display.display();
-    // }
 
 };
