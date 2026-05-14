@@ -138,8 +138,8 @@ public:
         display.display();
     }
 
-    void drawSlider(int currentValue,int maxMap, int minVal, int maxVal) {
-            int progress = map(currentValue, 0, maxMap, 0, 100);
+    void drawSlider(float currentValue,int maxMap, int minVal, int maxVal) {
+            int progress = map(currentValue, 0.0f, maxMap, 0, 100);
             int ySlider = 29;
             int yText = 28;
             display.drawLine(0, ySlider, 100, ySlider, SSD1306_WHITE);

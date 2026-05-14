@@ -49,6 +49,7 @@ private:
     SettingsMenu encoderSettingsMenu[4];
     EffectSlider encoderEffectSlider[4];
     int8_t encoderSegments[4];
+    float curveGamma[4] = {1.7, 1.7, 1.7, 1.7};
     int uiPercent[4] = {50, 50, 50, 50};
     bool needsUpdate[4] = {false, false, false, false};
 
@@ -90,6 +91,14 @@ private:
             // updateDisplay(i);
         }
     }
+
+    void setCurve(int encoderIndex, int delta) {
+        float currentGamma = curveGamma[encoderIndex];
+        currentGamma += (delta / 20.0f);
+        curveGamma[encoderIndex] = constrain(currentGamma, 1.0f, 3.0f);
+
+    }
+
     void setSegmentBrightness(int encoderIndex, int8_t segmentID, int delta) {
         Segment& seg = strip.getSegment(segmentID);
 
@@ -98,7 +107,7 @@ private:
 
         float norm = uiPercent[encoderIndex] / 100.0f;
 
-        float gamma = 1.7f;
+        float gamma = curveGamma[encoderIndex];
         float curved = pow(norm, gamma);
 
         seg.opacity = constrain((uint8_t)(255.0f * curved), 1, 255);
@@ -264,7 +273,8 @@ private:
                             break;
 
                         case MenuCategory::SETTINGS:
-                            currentMenuLevel = MenuLevel::SELECTING_L2;
+                            //currentMenuLevel = MenuLevel::SELECTING_L2;
+                            currentMenuLevel = MenuLevel::EDITING;
                             break;
 
                         default:
@@ -336,7 +346,8 @@ private:
 
                         case MenuCategory::SETTINGS :
                         case MenuCategory::EFFECTS :
-                            currentMenuLevel = MenuLevel::SELECTING_L2;
+                            //currentMenuLevel = MenuLevel::SELECTING_L2;
+                            currentMenuLevel = MenuLevel::SELECTING_L1;
                             break;
                         
                         default:
@@ -418,7 +429,7 @@ private:
                             break;
 
                         case MenuCategory::SETTINGS :
-                            //do something
+                            setCurve(encoderIndex, delta);
                             break;
 
                         case MenuCategory::NIGHTMODE :
@@ -487,10 +498,13 @@ private:
                         //draw nightmode settings
                         break;
 
-                    case MenuCategory::SETTINGS :
-                        oledDisplay.renderSelectionScreen("SETTINGS_L1", "Return", "Select", nullptr);
+                    case MenuCategory::SETTINGS : {
+                        const char* name = SettingsNames[static_cast<int>(encoderSettingsMenu[encoderIndex])];
+                        oledDisplay.renderSelectionScreen(name, "Return", "Select", nullptr);
                         //draw settings selection menu
-                        break;
+                        break;         
+                    }
+
 
                     default:
                         break;
@@ -517,7 +531,6 @@ private:
                         break;
 
                     case MenuCategory::SETTINGS :
-                        oledDisplay.renderSelectionScreen("SETTINGS_L2", "Return", "Select", nullptr);
                         //draw specific setting menu
                         break;
 
@@ -545,6 +558,7 @@ private:
 
                     case MenuCategory::SETTINGS :
                         //draw specific setting menu
+                        oledDisplay.renderSliderScreen("SETTINGS_L2", curveGamma[encoderIndex], 3, 1, 3,"Return", nullptr, nullptr);
                         break;
 
                     default:
