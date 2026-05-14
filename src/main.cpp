@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include <multiple_rotary_encoder.h>
+#include <wledBridge.h>
 
 #if defined(WOKWI_SIM) || defined (MOCK_COMPILE)
     #define Serial Serial0
@@ -20,19 +20,17 @@ void setup() {
 
     Serial.println("--- Start WLED Usermod Mock ---");
 
-    encoder_manager.initOLED();
+    //Instance_encoderManager.initOLED();
 
-    encoder_manager.setup();
+    Instance_wledBridge.setup();
 
-
-    encoder_manager.enable(true);
     Serial.println("[Mock] Usermod active.");
 
 }
 
 void loop() {
     
-    encoder_manager.loop();
+    Instance_wledBridge.loop();
 
 #ifdef WOKWI_SIM
     vTaskDelay(pdMS_TO_TICKS(10));

@@ -24,10 +24,9 @@ class rotaryEncoder {
     gpio_num_t pin_clk;
     gpio_num_t pin_dt;
     gpio_num_t pin_sw;
-    int brightness = 0;
-    int effect = 0;
+
     //int effectValue = 0;
-    int8_t segmentID;
+    //int8_t segmentID;
 
     int pulsesPerDetent = 2;
 
@@ -37,13 +36,6 @@ class rotaryEncoder {
         /**
      * Click Modi
      */
-    enum class Rotary_Encoder_MODI {
-        BRIGHTNESS_MODI,
-        EFFECT_MODI,
-        EFFECT_CONFIG_MODI,
-        EFFECT_CONFIG_SELECTED_MODI,
-        TOGGLED_OFF
-    };
 
 
     enum class ButtonEventType {
@@ -53,30 +45,20 @@ class rotaryEncoder {
         LONG_PRESS,
     };
 
-    enum class selectedEffectConfig {
-        SPEED,
-        INTENSITY,
-        OPACITY,
-        CUSTOM1,
-        CUSTOM2,
-        CUSTOM3
-    };
 
         /**
      * Click and Rotation Execution States
      */
     ButtonEventType eventButton = ButtonEventType::NONE;
 
-    selectedEffectConfig selectedEffConfig = selectedEffectConfig::SPEED;
-
     bool eventRotation = false;
+    int16_t deltaValue = 0;
 
     rotaryEncoder() {}
-    rotaryEncoder(pcnt_unit_t u, int clk, int dt, int sw, int8_t seg) : 
-        unit(u), pin_clk(static_cast<gpio_num_t>(clk)), pin_dt(static_cast<gpio_num_t>(dt)), pin_sw(static_cast<gpio_num_t>(sw)), segmentID(seg){};
+    rotaryEncoder(pcnt_unit_t u, int clk, int dt, int sw) : 
+        unit(u), pin_clk(static_cast<gpio_num_t>(clk)), pin_dt(static_cast<gpio_num_t>(dt)), pin_sw(static_cast<gpio_num_t>(sw)) {};
 
     private:
-
 
         bool stateChanged = false;
 
@@ -88,7 +70,6 @@ class rotaryEncoder {
         /**
          * Rotation Variables
          */
-        int16_t deltaValue = 0;
         unsigned long timeOfLastRotation = 0;
         bool rotationPending = false;
 
@@ -103,36 +84,11 @@ class rotaryEncoder {
         bool waitingForDoubleClick = false;
         u_int32_t timeOfFirstClick = 0;
 
-
-
-
-        Rotary_Encoder_MODI MODI = Rotary_Encoder_MODI::TOGGLED_OFF;
-
-
-
-
         public:
-
-        bool hasChanged() { return stateChanged; }
-        
-        void clearChangeFlag() { stateChanged = false; }
-
-        void RotationEventHandler();
-
-        void ButtonEventHandler();
-
-        void Brightness_Push();
-
-        void Effect_Push();
-
-        void Effect_Config_Push();
-
-        void Select_Effect_Config();
 
         void updatePCNT_Unit(int i);
 
         void updateButtonState(int32_t timeNOW);
         
-
 
 };
