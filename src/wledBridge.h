@@ -52,6 +52,7 @@ private:
     float curveGamma[4] = {2.0, 2.0, 2.0, 2.0};
     int uiPercent[4] = {50, 50, 50, 50};
     bool needsUpdate[4] = {false, false, false, false};
+    unsigned long lastInput = 0;
 
     // --- CONFIG VARIABLES ---
     bool enabled = true;
@@ -460,6 +461,9 @@ private:
             }
         }
         updateDisplay(encoderIndex);
+        lastInput = xTaskGetTickCount() * portTICK_PERIOD_MS;
+        oledDisplay.wakeUp(); // does not support multiple displays yet.
+
     }
     
 // --- DISPLAY UPDATE ---
@@ -638,10 +642,6 @@ public:
         hardwareManager.setup();
     }
 
-    void loop() override {
-        hardwareManager.loop();
-    }
-
     void addToConfig(JsonObject& root) override {
         JsonObject top = root.createNestedObject(FPSTR(_name));
         top[FPSTR(_enabled)] = enabled;
@@ -699,6 +699,23 @@ public:
         }
         return true;
     }
+
+    void sleepTimer() {
+        if(encoderMenuLevel[0] == MenuLevel::HOME) return;
+        unsigned long timeNOW = xTaskGetTickCount() * portTICK_PERIOD_MS;
+        int timeDifference = timeNOW - lastInput;
+        if(timeDifference > 30000) {
+            encoderMenuLevel[0] = MenuLevel::HOME;
+            updateDisplay(0);
+        } 
+    }
+
+    void loop() override {
+        hardwareManager.loop();
+        oledDisplay.loop();
+        sleepTimer();
+    }
+
 };
 
 extern WLED_Bridge Instance_wledBridge;
