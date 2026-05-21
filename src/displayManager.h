@@ -69,7 +69,6 @@ public:
             Serial.println(F("SSD1306 allocation failed"));
             return;
         }
-        
         isInitialized = true;
         display.clearDisplay();
         display.setTextSize(1);
@@ -112,6 +111,8 @@ public:
     void wakeUp() {
         lastInput = xTaskGetTickCount() * portTICK_PERIOD_MS;
         targetBrightness = 255;
+        display.ssd1306_command(SSD1306_SETPRECHARGE);
+        display.ssd1306_command(64);
     }
 
     void loop() {
@@ -120,7 +121,9 @@ public:
 
 
         if (timeDifference > 10000) {
-            targetBrightness = 50; 
+            targetBrightness = 0;
+            display.ssd1306_command(SSD1306_SETPRECHARGE);
+            display.ssd1306_command(0);
         }
 
 
@@ -161,7 +164,7 @@ public:
                             const char* rightHint, const char* turnHint)
     {
         display.clearDisplay();
-        display.drawBitmap(30, 0, BrightnessSymbol, 64, 32, SSD1306_WHITE);
+        //display.drawBitmap(30, 0, BrightnessSymbol, 64, 32, SSD1306_WHITE);
         drawSlider(currentValue, maxMap, minVal, maxVal);
         drawNavHint(leftHint, rightHint, turnHint);
         display.display();
