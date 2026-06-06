@@ -63,7 +63,7 @@ class rotaryEncoder {
         bool stateChanged = false;
 
         int longShortPressThreshold = 500;
-        int doublePressThreshold = 200;
+        int doublePressThreshold = 400;
         int BRIGHTNESS_ROTATION_DELAY = 40;
         int EFFECT_ROTATION_DELAY = 150;
 

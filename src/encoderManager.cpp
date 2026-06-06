@@ -30,7 +30,7 @@ inline void setup_PCNT_UNIT(pcnt_unit_t unit, int pin_clk, int pin_dt) {
     };
 
     pcnt_unit_config(&pcnt_config);
-    pcnt_set_filter_value(unit, 1000);
+    pcnt_set_filter_value(unit, 1023);
     pcnt_filter_enable(unit);
     pcnt_counter_pause(unit);
     pcnt_counter_clear(unit);

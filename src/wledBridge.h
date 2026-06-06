@@ -359,7 +359,7 @@ private:
                         case MenuCategory::SETTINGS :
                         case MenuCategory::EFFECTS :
                             //currentMenuLevel = MenuLevel::SELECTING_L2;
-                            currentMenuLevel = MenuLevel::SELECTING_L1;
+                            currentMenuLevel = MenuLevel::SELECTING_L2;
                             break;
                         
                         default:
