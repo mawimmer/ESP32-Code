@@ -57,10 +57,10 @@ private:
     // --- CONFIG VARIABLES ---
     bool enabled = true;
     int numEncoders = 1;
-    int longPressThreshold = 500;
-    int doublePressThreshold = 400;
-    int displayPinSDA = 21; // Or whatever your default is
-    int displayPinSCL = 22;
+    int longPressThreshold = 750;
+    int doublePressThreshold = 600;
+    int displayPinSDA = 17; // Or whatever your default is
+    int displayPinSCL = 18;
 
     const int MAXEFFECTID = strip.getModeCount() - 1;
 
