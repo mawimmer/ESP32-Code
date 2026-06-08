@@ -49,17 +49,18 @@ private:
     SettingsMenu encoderSettingsMenu[4];
     EffectSlider encoderEffectSlider[4];
     int8_t encoderSegments[4];
-    float curveGamma[4] = {1.7, 1.7, 1.7, 1.7};
+    float curveGamma[4] = {2.0, 2.0, 2.0, 2.0};
     int uiPercent[4] = {50, 50, 50, 50};
     bool needsUpdate[4] = {false, false, false, false};
+    unsigned long lastInput = 0;
 
     // --- CONFIG VARIABLES ---
     bool enabled = true;
     int numEncoders = 1;
-    int longPressThreshold = 500;
-    int doublePressThreshold = 400;
-    int displayPinSDA = 21; // Or whatever your default is
-    int displayPinSCL = 22;
+    int longPressThreshold = 750;
+    int doublePressThreshold = 600;
+    int displayPinSDA = 17; // Or whatever your default is
+    int displayPinSCL = 18;
 
     const int MAXEFFECTID = strip.getModeCount() - 1;
 
@@ -102,15 +103,26 @@ private:
     void setSegmentBrightness(int encoderIndex, int8_t segmentID, int delta) {
         Segment& seg = strip.getSegment(segmentID);
 
+        // UI remains simple linear %
         uiPercent[encoderIndex] += delta * 2;
         uiPercent[encoderIndex] = constrain(uiPercent[encoderIndex], 1, 100);
 
-        float norm = uiPercent[encoderIndex] / 100.0f;
+        float x = uiPercent[encoderIndex];
+        float gamma = curveGamma[encoderIndex]; // e.g. 2.0–4.0
 
-        float gamma = curveGamma[encoderIndex];
-        float curved = pow(norm, gamma);
+        float output;
 
-        seg.opacity = constrain((uint8_t)(255.0f * curved), 1, 255);
+        if (x <= 20.0f) {
+            // perfectly linear low-end control
+            output = 2.55f * x;
+        } else {
+            // curved upper range
+            float t = (x - 20.0f) / 80.0f; // normalize 20→100 to 0→1
+
+            output = 51.0f + 204.0f * pow(t, gamma);
+        }
+
+        seg.opacity = constrain((uint8_t)round(output), 1, 255);
 
         Serial.println(seg.opacity);
         Serial.println(uiPercent[encoderIndex]);
@@ -347,7 +359,7 @@ private:
                         case MenuCategory::SETTINGS :
                         case MenuCategory::EFFECTS :
                             //currentMenuLevel = MenuLevel::SELECTING_L2;
-                            currentMenuLevel = MenuLevel::SELECTING_L1;
+                            currentMenuLevel = MenuLevel::SELECTING_L2;
                             break;
                         
                         default:
@@ -430,6 +442,7 @@ private:
 
                         case MenuCategory::SETTINGS :
                             setCurve(encoderIndex, delta);
+                            Serial.println(curveGamma[encoderIndex]);
                             break;
 
                         case MenuCategory::NIGHTMODE :
@@ -448,6 +461,9 @@ private:
             }
         }
         updateDisplay(encoderIndex);
+        lastInput = xTaskGetTickCount() * portTICK_PERIOD_MS;
+        oledDisplay.wakeUp(); // does not support multiple displays yet.
+
     }
     
 // --- DISPLAY UPDATE ---
@@ -626,10 +642,6 @@ public:
         hardwareManager.setup();
     }
 
-    void loop() override {
-        hardwareManager.loop();
-    }
-
     void addToConfig(JsonObject& root) override {
         JsonObject top = root.createNestedObject(FPSTR(_name));
         top[FPSTR(_enabled)] = enabled;
@@ -687,6 +699,23 @@ public:
         }
         return true;
     }
+
+    void sleepTimer() {
+        if(encoderMenuLevel[0] == MenuLevel::HOME) return;
+        unsigned long timeNOW = xTaskGetTickCount() * portTICK_PERIOD_MS;
+        int timeDifference = timeNOW - lastInput;
+        if(timeDifference > 30000) {
+            encoderMenuLevel[0] = MenuLevel::HOME;
+            updateDisplay(0);
+        } 
+    }
+
+    void loop() override {
+        hardwareManager.loop();
+        oledDisplay.loop();
+        sleepTimer();
+    }
+
 };
 
 extern WLED_Bridge Instance_wledBridge;

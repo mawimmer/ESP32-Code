@@ -37,8 +37,8 @@ class encoderManager {
 
 private:
 
-    int longShortPressThreshold = 500;
-    int doublePressThreshold = 400;
+    // int longShortPressThreshold = 500;
+    // int doublePressThreshold = 400;
     bool enabled = false;
 
     // Rotary Encoders Pin Declarations (actual ESP32-S3 Pinout Numbers)

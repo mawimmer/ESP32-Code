@@ -11,6 +11,7 @@
 #endif
 
 #define CALL_MODE_BUTTON 1
+#define CALL_MODE_DIRECT_CHANGE 2
 #define SEG_OPTION_ON 0
 #ifndef FPSTR
 #define FPSTR(pstr_pointer) (reinterpret_cast<const __FlashStringHelper *>(pstr_pointer))
