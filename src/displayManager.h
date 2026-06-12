@@ -1,13 +1,23 @@
 #pragma once
 #include <Arduino.h>
 #include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
+// #include <Adafruit_GFX.h>
+// #include <Adafruit_SSD1306.h>
+#include <U8g2lib.h>
+#include <SPI.h>
 #include "encoderTypes.h" // Needs to know the modes to draw them!
 
-#define SCREEN_WIDTH 128
-#define SCREEN_HEIGHT 64
-#define OLED_RESET -1
+// #define SCREEN_WIDTH 128
+// #define SCREEN_HEIGHT 64
+// #define OLED_RESET -1
+
+
+#define SPI_CLK   18   // GPIO 18 - SPI Clock
+#define SPI_MOSI  23   // GPIO 23 - SPI Data (Master Out Slave In)
+#define SPI_MISO  19   // GPIO 19 - SPI Data (Master In Slave Out) - not needed for display
+#define OLED_CS   5    // GPIO 5  - Chip Select
+#define OLED_DC   4    // GPIO 4  - Data/Command
+#define OLED_RST  6    // GPIO 6  - Reset
 
 #define Serial Serial0
 
@@ -51,7 +61,9 @@ const int BrightnessSymbol_size = 256;
 
 class DisplayManager {
 private:
-    Adafruit_SSD1306 display;
+    //Adafruit_SSD1306 display;
+    U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2;
+    //U8G2_SH1122_256X64_F_4W_HW_SPI u8g2;
     bool isInitialized = false;
     int brightness = 255;
     unsigned long lastDimStep = 0;
@@ -59,25 +71,34 @@ private:
     int targetBrightness = 255;
 
 public:
-    DisplayManager() : display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET) {}
+    DisplayManager() : u8g2(U8G2_R0, U8X8_PIN_NONE) {}
+    //DisplayManager() : u8g2(U8G2_R0, OLED_CS, OLED_DC, OLED_RST) {}
+    //DisplayManager() : display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET) {}
 
     void setup(int pinSDA, int pinSCL) {
+
+        //SPI.begin(SPI_CLK, SPI_MISO, SPI_MOSI, OLED_CS);
         Wire.begin(pinSDA, pinSCL);
-        
-        // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
-        if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { 
-            Serial.println(F("SSD1306 allocation failed"));
+        u8g2.begin();
+
+        if(!u8g2.getBufferPtr()) {
+            Serial.println(F("U8G2 SPI allocation failed"));
             return;
         }
+        
         isInitialized = true;
-        display.clearDisplay();
-        display.setTextSize(1);
-        display.setTextColor(SSD1306_WHITE);
-        display.setCursor(20,30);
-        display.println("Hello (:");
-        display.display();
+        u8g2.clearBuffer();
+        u8g2.setFont(u8g2_font_6x10_tf);
+        u8g2.setDrawColor(1);
+        u8g2.drawStr(20, 32, "Hello (:"); // x, y (baseline for text)
+        u8g2.sendBuffer();
     }
 
+
+    // ------------------ Refactored to here ------------------
+
+    //------------------------------------------------------------------------
+    
     /**
      *  leftHint = longPress
      *  rightHint = shortPress
@@ -86,33 +107,36 @@ public:
      *  pass nullptr if hint shouldn't be visible
      */
     void drawNavHint(const char* leftHint, const char* rightHint, const char* turnHint) {
+        u8g2.setDrawColor(1);
         if(leftHint) {
-            display.fillRoundRect(4, 57, 15, 6, 6, SSD1306_WHITE);
-            display.setTextSize(1);
-            display.setTextColor(SSD1306_WHITE);
-            display.setCursor(22, 57);
-            display.println(leftHint);
+            // display.fillRoundRect(4, 57, 15, 6, 6, SSD1306_WHITE);
+            // display.setTextSize(1);
+            // display.setTextColor(SSD1306_WHITE);
+            // display.setCursor(22, 57);
+            // display.println(leftHint);
+            u8g2.drawRBox(4, 57, 15, 6, 2); // x, y, w, h, r, color(1=filled)
+            u8g2.drawStr(22, 57, leftHint);
         }
         if(rightHint) {
-            display.fillCircle(80, 60, 3, SSD1306_WHITE);
-            display.setTextSize(1);
-            display.setTextColor(SSD1306_WHITE);
-            display.setCursor(88, 57);
-            display.println(rightHint);
+            u8g2.drawDisc(80, 60, 3, U8G2_DRAW_ALL);
+            u8g2.drawStr(88, 57, rightHint);
+            // display.fillCircle(80, 60, 3, SSD1306_WHITE);
+            // display.setTextSize(1);
+            // display.setTextColor(SSD1306_WHITE);
+            // display.setCursor(88, 57);
+            // display.println(rightHint);
         }
         if(turnHint) {
-            display.setTextSize(1);
-            display.setTextColor(SSD1306_WHITE);
-            display.setCursor(45, 40);
-            display.println(turnHint);
+            u8g2.drawStr(45, 40, turnHint);
         }
     }
 
     void wakeUp() {
         lastInput = xTaskGetTickCount() * portTICK_PERIOD_MS;
         targetBrightness = 255;
-        display.ssd1306_command(SSD1306_SETPRECHARGE);
-        display.ssd1306_command(64);
+        u8g2.setPowerSave(0);
+        // display.ssd1306_command(SSD1306_SETPRECHARGE);
+        // display.ssd1306_command(64);
     }
 
     void loop() {
@@ -122,8 +146,8 @@ public:
 
         if (timeDifference > 10000) {
             targetBrightness = 0;
-            display.ssd1306_command(SSD1306_SETPRECHARGE);
-            display.ssd1306_command(0);
+            // display.ssd1306_command(SSD1306_SETPRECHARGE);
+            // display.ssd1306_command(0);
         }
 
 
@@ -139,23 +163,32 @@ public:
             }
 
             Serial.printf("Brightness is: %d\r\n", brightness);
-            display.ssd1306_command(SSD1306_SETCONTRAST);
-            display.ssd1306_command(brightness);
+            // display.ssd1306_command(SSD1306_SETCONTRAST);
+            // display.ssd1306_command(brightness);
+            u8g2.setContrast(brightness);
         }
     }
 
     void drawSelection(const char* lineBuffer) {
         //println(title)
-        display.setTextSize(1);
-        display.setCursor(0, 32);
-        display.println("<");
-        display.setCursor(120, 32);
-        display.println(">");
-        display.setTextSize(2);
-        display.setTextColor(SSD1306_WHITE);
-        int len = (128 - strlen(lineBuffer) * 12) / 2;
-        display.setCursor(len ,28);
-        display.println(lineBuffer);
+        // display.setTextSize(1);
+        // display.setCursor(0, 32);
+        // display.println("<");
+        // display.setCursor(120, 32);
+        // display.println(">");
+        // display.setTextSize(2);
+        // display.setTextColor(SSD1306_WHITE);
+        // int len = (128 - strlen(lineBuffer) * 12) / 2;
+        // display.setCursor(len ,28);
+        // display.println(lineBuffer);
+        u8g2.setFont(u8g2_font_6x10_tf);
+        u8g2.drawStr(0, 32, "<");
+        u8g2.drawStr(120, 32, ">");
+        
+        u8g2.setFont(u8g2_font_ncenB08_tr); // Larger font
+        u8g2.setDrawColor(1);
+        int len = (128 - strlen(lineBuffer) * 7) / 2; // Adjusted for font width
+        u8g2.drawStr(len, 38, lineBuffer);
     }
 
 
@@ -163,20 +196,29 @@ public:
                             int minVal, int maxVal, const char* leftHint, 
                             const char* rightHint, const char* turnHint)
     {
-        display.clearDisplay();
-        //display.drawBitmap(30, 0, BrightnessSymbol, 64, 32, SSD1306_WHITE);
+        // display.clearDisplay();
+        // //display.drawBitmap(30, 0, BrightnessSymbol, 64, 32, SSD1306_WHITE);
+        // drawSlider(currentValue, maxMap, minVal, maxVal);
+        // drawNavHint(leftHint, rightHint, turnHint);
+        // display.display();
+        u8g2.clearBuffer();
+        // u8g2.drawXBM(30, 0, BrightnessSymbol_width, BrightnessSymbol_height, BrightnessSymbol);
         drawSlider(currentValue, maxMap, minVal, maxVal);
         drawNavHint(leftHint, rightHint, turnHint);
-        display.display();
+        u8g2.sendBuffer();
     }
 
     void renderSelectionScreen(const char* lineBuffer, const char* leftHint, 
                             const char* rightHint, const char* turnHint)
     {
-        display.clearDisplay();
+        // display.clearDisplay();
+        // drawSelection(lineBuffer);
+        // drawNavHint(leftHint, rightHint, turnHint);
+        // display.display();
+        u8g2.clearBuffer();
         drawSelection(lineBuffer);
         drawNavHint(leftHint, rightHint, turnHint);
-        display.display();
+        u8g2.sendBuffer();
     }
 
     void drawSlider(float currentValue,int maxMap, int minVal, int maxVal) {
@@ -185,23 +227,43 @@ public:
             int progress = (int)percentage;
             int ySlider = 29;
             int yText = 28;
-            display.drawLine(0, ySlider, 100, ySlider, SSD1306_WHITE);
-            display.fillCircle(progress,ySlider,4,SSD1306_BLACK);
-            display.fillCircle(progress,ySlider,3,SSD1306_WHITE);
-            display.setCursor(104, yText);
-            display.setTextSize(1);
-            display.printf("%d%%", progress);
+
+            u8g2.setFont(u8g2_font_6x10_tf);
+            u8g2.drawLine(0, ySlider, 100, ySlider); // horizontal line
+
+            u8g2.setDrawColor(0);
+            u8g2.drawDisc(progress, ySlider, 4, U8G2_DRAW_ALL); // filled
+            u8g2.setDrawColor(1);
+            u8g2.drawDisc(progress, ySlider, 3, U8G2_DRAW_ALL); // filled
+
+
+            // display.drawLine(0, ySlider, 100, ySlider, SSD1306_WHITE);
+            // display.fillCircle(progress,ySlider,4,SSD1306_BLACK);
+            // display.fillCircle(progress,ySlider,3,SSD1306_WHITE);
+            // display.setCursor(104, yText);
+            // display.setTextSize(1);
+            // display.printf("%d%%", progress);
+            char buffer[8];
+            snprintf(buffer, sizeof(buffer), "%d%%", progress);
+            u8g2.drawStr(104, yText, buffer);
     }
 
     void renderStaticScreen(const char* text, const char* leftHint, const char* rightHint, const char* turnHint) {
-        display.clearDisplay();
-        int len = (128 - strlen(text) * 12) / 2;
-        display.setCursor(len ,28);
-        display.println(text);
+        // display.clearDisplay();
+        // int len = (128 - strlen(text) * 12) / 2;
+        // display.setCursor(len ,28);
+        // display.println(text);
+        // drawNavHint(leftHint, rightHint, turnHint);
+        // display.display();
+        u8g2.clearBuffer();
+        u8g2.setFont(u8g2_font_6x10_tf);
+        int len = (128 - strlen(text) * 6) / 2;
+        u8g2.drawStr(len, 28, text);
         drawNavHint(leftHint, rightHint, turnHint);
-        display.display();
+        u8g2.sendBuffer();
     }
 
+    /*
     void animate() {
         int progress = 0;
 
@@ -282,6 +344,9 @@ public:
         }
     }
 
+    */
+
+    /*
     void plotCurve() {
         display.clearDisplay();
 
@@ -313,5 +378,5 @@ public:
         display.display();
     }
 
-
+    */
 };

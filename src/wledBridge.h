@@ -59,8 +59,8 @@ private:
     int numEncoders = 1;
     int longPressThreshold = 750;
     int doublePressThreshold = 600;
-    int displayPinSDA = 17; // Or whatever your default is
-    int displayPinSCL = 18;
+    int displayPinSDA = 11; // Or whatever your default is
+    int displayPinSCL = 12;
 
     const int MAXEFFECTID = strip.getModeCount() - 1;
 
