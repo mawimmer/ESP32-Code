@@ -12,12 +12,12 @@
 // #define OLED_RESET -1
 
 
-#define SPI_CLK   18   // GPIO 18 - SPI Clock
-#define SPI_MOSI  23   // GPIO 23 - SPI Data (Master Out Slave In)
-#define SPI_MISO  19   // GPIO 19 - SPI Data (Master In Slave Out) - not needed for display
-#define OLED_CS   5    // GPIO 5  - Chip Select
-#define OLED_DC   4    // GPIO 4  - Data/Command
-#define OLED_RST  6    // GPIO 6  - Reset
+#define SPI_CLK   48   // GPIO 18 - SPI Clock
+#define SPI_MOSI  38   // GPIO 23 - SPI Data (Master Out Slave In)
+#define SPI_MISO  -1   // GPIO 19 - SPI Data (Master In Slave Out) - not needed for display
+#define OLED_CS   21    // GPIO 5  - Chip Select
+#define OLED_DC   13    // GPIO 4  - Data/Command
+#define OLED_RST  12    // GPIO 6  - Reset
 
 #define Serial Serial0
 
@@ -62,8 +62,8 @@ const int BrightnessSymbol_size = 256;
 class DisplayManager {
 private:
     //Adafruit_SSD1306 display;
-    U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2;
-    //U8G2_SH1122_256X64_F_4W_HW_SPI u8g2;
+    //U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2;
+    U8G2_SH1122_256X64_F_4W_HW_SPI u8g2;
     bool isInitialized = false;
     int brightness = 255;
     unsigned long lastDimStep = 0;
@@ -71,15 +71,17 @@ private:
     int targetBrightness = 255;
 
 public:
-    DisplayManager() : u8g2(U8G2_R0, U8X8_PIN_NONE) {}
-    //DisplayManager() : u8g2(U8G2_R0, OLED_CS, OLED_DC, OLED_RST) {}
+    // DisplayManager() : u8g2(U8G2_R0, U8X8_PIN_NONE) {}
+    DisplayManager() : u8g2(U8G2_R0, OLED_CS, OLED_DC, OLED_RST) {}
     //DisplayManager() : display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET) {}
 
     void setup(int pinSDA, int pinSCL) {
 
-        //SPI.begin(SPI_CLK, SPI_MISO, SPI_MOSI, OLED_CS);
-        Wire.begin(pinSDA, pinSCL);
+        SPI.begin(SPI_CLK, SPI_MISO, SPI_MOSI, OLED_CS);
+        // Wire.begin(pinSDA, pinSCL);
+        
         u8g2.begin();
+        u8g2.setContrast(255);
 
         if(!u8g2.getBufferPtr()) {
             Serial.println(F("U8G2 SPI allocation failed"));
@@ -115,11 +117,11 @@ public:
             // display.setCursor(22, 57);
             // display.println(leftHint);
             u8g2.drawRBox(4, 57, 15, 6, 2); // x, y, w, h, r, color(1=filled)
-            u8g2.drawStr(22, 57, leftHint);
+            u8g2.drawStr(22, 62, leftHint);
         }
         if(rightHint) {
             u8g2.drawDisc(80, 60, 3, U8G2_DRAW_ALL);
-            u8g2.drawStr(88, 57, rightHint);
+            u8g2.drawStr(88, 62, rightHint);
             // display.fillCircle(80, 60, 3, SSD1306_WHITE);
             // display.setTextSize(1);
             // display.setTextColor(SSD1306_WHITE);
@@ -127,7 +129,7 @@ public:
             // display.println(rightHint);
         }
         if(turnHint) {
-            u8g2.drawStr(45, 40, turnHint);
+            u8g2.drawStr(45, 45, turnHint);
         }
     }
 
@@ -137,6 +139,8 @@ public:
         u8g2.setPowerSave(0);
         // display.ssd1306_command(SSD1306_SETPRECHARGE);
         // display.ssd1306_command(64);
+        // u8x8_cad_SendCmd(u8g2.getU8x8(), 0xD9);
+        // u8x8_cad_SendArg(u8g2.getU8x8(), 0x22);
     }
 
     void loop() {
@@ -148,6 +152,8 @@ public:
             targetBrightness = 0;
             // display.ssd1306_command(SSD1306_SETPRECHARGE);
             // display.ssd1306_command(0);
+            // u8x8_cad_SendCmd(u8g2.getU8x8(), 0xD9); 
+            // u8x8_cad_SendArg(u8g2.getU8x8(), 0x00);
         }
 
 
@@ -224,28 +230,22 @@ public:
     void drawSlider(float currentValue,int maxMap, int minVal, int maxVal) {
             float percentage = (currentValue / (float)maxMap) * 100.0f;
             //int progress = map(currentValue, 0.0f, maxMap, 0, 100);
+            int xPos = (int)((currentValue / (float)maxMap) * 225.0f);
             int progress = (int)percentage;
             int ySlider = 29;
             int yText = 28;
 
             u8g2.setFont(u8g2_font_6x10_tf);
-            u8g2.drawLine(0, ySlider, 100, ySlider); // horizontal line
+            u8g2.drawLine(0, ySlider, 225, ySlider); // horizontal line
 
             u8g2.setDrawColor(0);
-            u8g2.drawDisc(progress, ySlider, 4, U8G2_DRAW_ALL); // filled
+            u8g2.drawDisc(xPos, ySlider, 4, U8G2_DRAW_ALL); // filled
             u8g2.setDrawColor(1);
-            u8g2.drawDisc(progress, ySlider, 3, U8G2_DRAW_ALL); // filled
+            u8g2.drawDisc(xPos, ySlider, 3, U8G2_DRAW_ALL); // filled
 
-
-            // display.drawLine(0, ySlider, 100, ySlider, SSD1306_WHITE);
-            // display.fillCircle(progress,ySlider,4,SSD1306_BLACK);
-            // display.fillCircle(progress,ySlider,3,SSD1306_WHITE);
-            // display.setCursor(104, yText);
-            // display.setTextSize(1);
-            // display.printf("%d%%", progress);
             char buffer[8];
             snprintf(buffer, sizeof(buffer), "%d%%", progress);
-            u8g2.drawStr(104, yText, buffer);
+            u8g2.drawStr(230, yText, buffer);
     }
 
     void renderStaticScreen(const char* text, const char* leftHint, const char* rightHint, const char* turnHint) {

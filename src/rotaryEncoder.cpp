@@ -148,6 +148,7 @@ void rotaryEncoder::updateButtonState(int32_t timeNOW) {
                     waitingForDoubleClick = true;
                     timeOfFirstClick = timeNOW;
                     buttonPressHandled = true;
+                    return;
                 }
 
                 // If Pressed Longer or Equal to (const int longShortPressThreshold) -> Long Press
