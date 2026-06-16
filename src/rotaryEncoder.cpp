@@ -25,38 +25,39 @@ void IRAM_ATTR buttonISR(void* arg) {
 
     Encoder.lastEdge = now;
 
-    // if (!Encoder.buttonIsPressed) {
-    //     // Button PRESSED
-    //     Encoder.timeOfLastClick = now;  // Only set on initial press
-    //     Encoder.buttonIsPressed = true;
-    //     Encoder.buttonWasPressed = false;
-    //     Encoder.buttonPressHandled = false;
-    //     return;
-    // }
+    if (!Encoder.buttonIsPressed) {
+        // Button PRESSED
+        Encoder.timeOfLastClick = now;  // Only set on initial press
 
-    // if (Encoder.buttonIsPressed) {
-    //     // Button RELEASED
-    //     Encoder.buttonIsPressed = false;
-    //     Encoder.buttonWasPressed = true;
-    //     return;
-    // }
-    bool pinState = gpio_get_level(Encoder.pin_sw);
-    bool isCurrentlyPressed = (pinState == 0);  // LOW = pressed
-    bool wasPressed = Encoder.buttonIsPressed;
 
-    // State change from not-pressed to pressed
-    if (!wasPressed && isCurrentlyPressed) {
-        Encoder.timeOfLastClick = now;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         Encoder.buttonIsPressed = true;
         Encoder.buttonWasPressed = false;
         Encoder.buttonPressHandled = false;
-        Serial.printf("Button PRESSED at %lu\n", now);
+        return;
     }
-    // State change from pressed to not-pressed
-    else if (wasPressed && !isCurrentlyPressed) {
+
+    if (Encoder.buttonIsPressed) {
+        // Button RELEASED
         Encoder.buttonIsPressed = false;
         Encoder.buttonWasPressed = true;
-        Serial.printf("Button RELEASED at %lu (duration: %lu ms)\n", now, now - Encoder.timeOfLastClick);
+        return;
     }
 }
 
@@ -67,17 +68,17 @@ void rotaryEncoder::updatePCNT_Unit(int i) {
     if (ValueNOW) {
 
 
-        // Check if the rotation is too fast
-        int32_t timeSinceLastRotation = xTaskGetTickCount() * portTICK_PERIOD_MS - timeOfLastRotation;
-        const int32_t MIN_ROTATION_TIME = 40;  // Minimum 10ms between valid rotations
-        
-        if (timeSinceLastRotation < MIN_ROTATION_TIME && rotationPending) {
-            // Reject - this is too fast to be mechanical
-            Serial.printf("Rejected rotation - too fast (%ldms), value: %d\n", 
-                         timeSinceLastRotation, ValueNOW);
-            pcnt_counter_clear(unit);
-            return;
-        }
+
+
+
+
+
+
+
+
+
+
+
 
         pcnt_counter_clear(unit);
         deltaValue += ValueNOW;
@@ -97,16 +98,16 @@ void rotaryEncoder::updatePCNT_Unit(int i) {
 }
 
 void rotaryEncoder::updateButtonState(int32_t timeNOW) {
-    static int lastPressed = -1;
-    static int lastWasPressed = -1;
-    if (buttonIsPressed != lastPressed || 
-        buttonWasPressed != lastWasPressed) {
-        Serial.printf("State: pressed=%d wasPressed=%d handled=%d\n", 
-            buttonIsPressed, buttonWasPressed, 
-            buttonPressHandled);
-        lastPressed = buttonIsPressed;
-        lastWasPressed = buttonWasPressed;
-    }
+
+
+
+
+
+
+
+
+
+
     // If a falling Edge is detected from an Interrupt, the .buttonPressHandled Flag is set "false"
     if (!buttonPressHandled) {
         int32_t timeDifference = timeNOW - timeOfLastClick;
@@ -123,10 +124,11 @@ void rotaryEncoder::updateButtonState(int32_t timeNOW) {
                 eventButton = ButtonEventType::LONG_PRESS;
                 stateChanged = true;
                 //Instance_encoderManager.global_eventPending = true;
+
                 // Reset .buttonPressHandled to "true", so no more execution until next button press
                 buttonPressHandled = true;
-                waitingForDoubleClick = false;
-                return;
+
+
             };
         };
 
@@ -148,7 +150,6 @@ void rotaryEncoder::updateButtonState(int32_t timeNOW) {
                     waitingForDoubleClick = true;
                     timeOfFirstClick = timeNOW;
                     buttonPressHandled = true;
-                    return;
                 }
 
                 // If Pressed Longer or Equal to (const int longShortPressThreshold) -> Long Press
