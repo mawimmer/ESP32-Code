@@ -7,6 +7,7 @@ enum class MenuLevel {
     SELECTING_L1,
     SELECTING_L2,
     EDITING,
+    SLEEP,
     _COUNT
 };
 inline const char* LevelNames[] = {
@@ -15,7 +16,8 @@ inline const char* LevelNames[] = {
     "Menu",
     "SubMenu 1",
     "SubMenu 2",
-    "Editing"
+    "Editing",
+    "Sleep"
 };
 
 

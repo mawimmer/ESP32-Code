@@ -28,25 +28,6 @@ void IRAM_ATTR buttonISR(void* arg) {
     if (!Encoder.buttonIsPressed) {
         // Button PRESSED
         Encoder.timeOfLastClick = now;  // Only set on initial press
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         Encoder.buttonIsPressed = true;
         Encoder.buttonWasPressed = false;
         Encoder.buttonPressHandled = false;
@@ -66,20 +47,6 @@ void rotaryEncoder::updatePCNT_Unit(int i) {
     pcnt_get_counter_value(unit, &ValueNOW);
 
     if (ValueNOW) {
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         pcnt_counter_clear(unit);
         deltaValue += ValueNOW;
         rotationPending = true;
@@ -98,15 +65,6 @@ void rotaryEncoder::updatePCNT_Unit(int i) {
 }
 
 void rotaryEncoder::updateButtonState(int32_t timeNOW) {
-
-
-
-
-
-
-
-
-
 
     // If a falling Edge is detected from an Interrupt, the .buttonPressHandled Flag is set "false"
     if (!buttonPressHandled) {

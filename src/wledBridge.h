@@ -48,6 +48,7 @@ private:
     MenuCategory encoderMenuCategory[4];
     SettingsMenu encoderSettingsMenu[4];
     EffectSlider encoderEffectSlider[4];
+    bool DisplayOFF[4] = {false, false, false, false};
     int8_t encoderSegments[4];
     float curveGamma[4] = {2.0, 2.0, 2.0, 2.0};
     int uiPercent[4] = {50, 50, 50, 50};
@@ -245,6 +246,10 @@ private:
         if (event == rotaryEncoder::ButtonEventType::SHORT_PRESS) {
 
             switch(currentMenuLevel) {
+                case MenuLevel::SLEEP :
+                    currentMenuLevel = MenuLevel::HOME;
+                    break;
+
                 case MenuLevel::OFF :
                     currentMenuLevel = MenuLevel::HOME;
                     toggleSegment(segID);
@@ -463,6 +468,7 @@ private:
         updateDisplay(encoderIndex);
         lastInput = xTaskGetTickCount() * portTICK_PERIOD_MS;
         oledDisplay.wakeUp(); // does not support multiple displays yet.
+        DisplayOFF[0] = false; // does not support multiple displays yet.
 
     }
     
@@ -584,7 +590,7 @@ private:
                 break;
                 
             case MenuLevel::OFF :
-                oledDisplay.renderStaticScreen("Segment OFF", "On", nullptr, nullptr);
+                oledDisplay.renderStaticScreen("Light OFF", nullptr, nullptr, nullptr);
 
             default:
                 break;
@@ -623,7 +629,7 @@ public:
 
             Segment& seg = strip.getSegment(encoderSegments[i]);
             if (seg.getOption(SEG_OPTION_ON)) {
-                encoderMenuLevel[i] = MenuLevel::HOME;
+                encoderMenuLevel[i] = MenuLevel::SLEEP;
             } else {
                 encoderMenuLevel[i] = MenuLevel::OFF; 
             }
@@ -700,20 +706,39 @@ public:
         return true;
     }
 
+    void getTime() {
+        
+        static int lastMinute = -1;
+        struct tm timeinfo;
+
+        if (!getLocalTime(&timeinfo)) return;
+
+        if (timeinfo.tm_min == lastMinute) return;
+
+        lastMinute = timeinfo.tm_min;
+
+        oledDisplay.renderTime(timeinfo.tm_hour, timeinfo.tm_min);
+    }
+
     void sleepTimer() {
-        if(encoderMenuLevel[0] == MenuLevel::HOME) return;
+        //if(encoderMenuLevel[0] == MenuLevel::HOME) return;
         unsigned long timeNOW = xTaskGetTickCount() * portTICK_PERIOD_MS;
         int timeDifference = timeNOW - lastInput;
-        if(timeDifference > 30000) {
-            encoderMenuLevel[0] = MenuLevel::HOME;
-            updateDisplay(0);
-        } 
+        if(!DisplayOFF[0] && timeDifference > 30000) {
+            if(encoderMenuLevel[0] != MenuLevel::OFF){
+                encoderMenuLevel[0] = MenuLevel::SLEEP;
+            }
+            oledDisplay.sleep();
+            DisplayOFF[0] = true;
+
+        }
     }
 
     void loop() override {
         hardwareManager.loop();
         oledDisplay.loop();
         sleepTimer();
+        //getTime();
     }
 
 };
